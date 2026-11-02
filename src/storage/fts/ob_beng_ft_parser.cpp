@@ -42,6 +42,8 @@ int ObBEngFTParser::get_next_token(
   word_freq = 0;
   if (OB_UNLIKELY(!is_inited_)) {
     ret = OB_NOT_INIT;
+  } else if (ascii_doc_ != nullptr) {
+    ret = next_ascii_token(word, word_len, char_len, word_freq);
   } else if (OB_ISNULL(token_stream_)) {
     ret = OB_ERR_UNEXPECTED;
   } else if (OB_FAIL(token_stream_->get_next(token, token_freq))) {
@@ -62,6 +64,22 @@ int ObBEngFTParser::get_next_token(
   return ret;
 }
 
+int ObBEngFTParser::next_ascii_token(
+    const char *&word, int64_t &word_len, int64_t &char_len, int64_t &word_freq)
+{
+  auto alnum = [](unsigned char ch) {
+    return (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9');
+  };
+  while (ascii_cursor_ < ascii_length_ && !alnum(ascii_doc_[ascii_cursor_])) { ++ascii_cursor_; }
+  const int64_t start = ascii_cursor_;
+  while (ascii_cursor_ < ascii_length_ && alnum(ascii_doc_[ascii_cursor_])) { ++ascii_cursor_; }
+  if (start == ascii_length_) { return OB_ITER_END; }
+  word = ascii_doc_ + start;
+  word_len = char_len = ascii_cursor_ - start;
+  word_freq = 1;
+  return OB_SUCCESS;
+}
+
 int ObBEngFTParser::init(ObFTParserParam *param)
 {
   int ret = OB_SUCCESS;
@@ -76,7 +94,30 @@ int ObBEngFTParser::init(ObFTParserParam *param)
     analysis_ctx_.cs_ = param->cs_;
     analysis_ctx_.filter_stopword_ = false;
     analysis_ctx_.need_grouping_ = false;
-    if (OB_FAIL(english_analyzer_.init(analysis_ctx_, *param->allocator_))) {
+    // For ASCII under these UTF-8 collations, the original whitespace/control/
+    // punctuation splitting plus alphanumeric trimming is exactly an alnum scan.
+    // Non-ASCII and other collations retain the general charset-aware pipeline.
+    bool ascii = param->ft_length_ <= 1024 * 1024
+        && (param->cs_->number == CS_TYPE_UTF8MB4_BIN
+            || param->cs_->number == CS_TYPE_UTF8MB4_GENERAL_CI);
+    for (int64_t i = 0; ascii && i < param->ft_length_; ++i) {
+      const unsigned char ch = static_cast<unsigned char>(param->fulltext_[i]);
+      ascii = ch > 0 && ch < 0x80;
+    }
+    if (ascii) {
+      // The caller's arena owns returned words beyond this iterator's lifetime,
+      // just as it owns the token copies produced by the general pipeline.
+      ascii_doc_ = static_cast<char *>(param->allocator_->alloc(param->ft_length_));
+      if (ascii_doc_ == nullptr) { ret = OB_ALLOCATE_MEMORY_FAILED; }
+      else {
+        ascii_length_ = param->ft_length_;
+        for (int64_t i = 0; i < ascii_length_; ++i) {
+          const char ch = param->fulltext_[i];
+          ascii_doc_[i] = ch >= 'A' && ch <= 'Z' ? ch + ('a' - 'A') : ch;
+        }
+        is_inited_ = true;
+      }
+    } else if (OB_FAIL(english_analyzer_.init(analysis_ctx_, *param->allocator_))) {
     } else if (OB_FAIL(segment(doc_, token_stream_))) {
     } else if (OB_ISNULL(token_stream_)) {
       ret = OB_ERR_UNEXPECTED;
@@ -110,6 +151,8 @@ void ObBEngFTParser::reset()
   english_analyzer_.reset();
   doc_.reset();
   token_stream_ = nullptr;
+  ascii_doc_ = nullptr;
+  ascii_length_ = ascii_cursor_ = 0;
   is_inited_ = false;
 }
 

@@ -13,6 +13,9 @@ pieces = ['中华人民共和国', '研究生命起源', '南京市长江大桥'
           'eMail@example.com', '123.45', '一百二十三公斤', '２０２６', 'テスト', '한글', '😀', '\t', ' ', '。', 'äÖß']
 documents = ['', ' ', 'a', '人际关系', '中华人民共和国人民大会堂', ''.join(pieces)]
 documents += [''.join(rng.choices(pieces, k=rng.randrange(1, 120))) for _ in range(100)]
+ascii_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !@#$%^&*()-_=+[]{};:,.<>/?\\|\t\n\r\v\f'
+documents += [''.join(rng.choices(ascii_chars, k=rng.randrange(1, 2000))) for _ in range(100)]
+documents += ['hello\x00WORLD trailing', 'A' * 9000, 'UPPER lower MiXeD', '\t\r\n...---___']
 documents += [('中文数据库 OceanBase 123 公斤。' * 1500), ('abcXYZ +test ' * 2000)]
 connection = pymysql.connect(unix_socket=os.environ['FTS_TEST_SOCKET'], user='root', charset='utf8mb4')
 results = []

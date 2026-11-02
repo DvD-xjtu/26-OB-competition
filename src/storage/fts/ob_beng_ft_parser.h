@@ -39,6 +39,9 @@ public:
       english_analyzer_(),
       doc_(),
       token_stream_(nullptr),
+      ascii_doc_(nullptr),
+      ascii_length_(0),
+      ascii_cursor_(0),
       is_inited_(false)
   {}
   ~ObBEngFTParser() { reset(); }
@@ -53,6 +56,7 @@ public:
 
   VIRTUAL_TO_STRING_KV(K_(analysis_ctx), K_(english_analyzer), KP_(token_stream), K_(is_inited));
 private:
+  int next_ascii_token(const char *&word, int64_t &word_len, int64_t &char_len, int64_t &word_freq);
   int segment(
       const common::ObDatum &doc,
       share::ObITokenStream *&token_stream);
@@ -62,6 +66,9 @@ private:
   share::ObEnglishTextAnalyzer english_analyzer_;
   common::ObDatum doc_;
   share::ObITokenStream *token_stream_;
+  char *ascii_doc_;
+  int64_t ascii_length_;
+  int64_t ascii_cursor_;
   bool is_inited_;
 
   DISALLOW_COPY_AND_ASSIGN(ObBEngFTParser);

@@ -18,6 +18,8 @@
 #define _OCEANBASE_STORAGE_FTS_DICT_OB_FT_DICT_HUB_H_
 
 #include "lib/charset/ob_charset.h"
+#include <atomic>
+#include <mutex>
 #include "lib/lock/ob_bucket_lock.h"
 #include "storage/fts/dict/ob_ft_dict_def.h"
 
@@ -93,13 +95,16 @@ private:
 };
 
 class ObFTCacheRangeContainer;
+class ObIFTDict;
+struct SharedIKDictionaries;
 class ObFTDictHub
 {
 public:
-  ObFTDictHub() : is_inited_(false), dict_map_(), rw_dict_lock_() {}
-  ~ObFTDictHub() {}
+  ObFTDictHub() : is_inited_(false), dict_map_(), rw_dict_lock_(), shared_ik_(nullptr) {}
+  ~ObFTDictHub();
 
   int init();
+  int get_shared_ik_dicts(ObIFTDict *&main, ObIFTDict *&quantifier, ObIFTDict *&stop);
 
   int destroy();
 
@@ -118,6 +123,8 @@ private:
   // holds info of dict
   hash::ObHashMap<ObFTDictInfoKey, ObFTDictInfo> dict_map_;
   ObBucketLock rw_dict_lock_;
+  std::atomic<SharedIKDictionaries *> shared_ik_;
+  std::mutex shared_ik_mutex_;
 };
 
 } //  namespace storage

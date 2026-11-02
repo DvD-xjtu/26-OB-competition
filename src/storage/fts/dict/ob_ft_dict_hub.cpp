@@ -24,10 +24,59 @@
 #include "storage/fts/dict/ob_ft_cache_container.h"
 #include "storage/fts/dict/ob_ft_dict_def.h"
 #include "storage/fts/dict/ob_ft_range_dict.h"
+#include <new>
 namespace oceanbase
 {
 namespace storage
 {
+// Built-in IK dictionaries are immutable for the lifetime of the hub. Their
+// cache handles stay pinned while parsers borrow the const matching interface.
+// Per-document trie hits and token lists remain private to each parser.
+struct SharedIKDictionaries {
+  ObArenaAllocator allocator;
+  ObFTCacheRangeContainer main_cache, quantifier_cache, stop_cache;
+  ObFTRangeDict *main = nullptr, *quantifier = nullptr, *stop = nullptr;
+  SharedIKDictionaries() : allocator(ObMemAttr("SharedIKDict")),
+      main_cache(allocator), quantifier_cache(allocator), stop_cache(allocator) {}
+  ~SharedIKDictionaries() { delete main; delete quantifier; delete stop; }
+  int build(ObFTDictHub &hub, ObFTDictType type, const char *name,
+            ObFTCacheRangeContainer &cache, ObFTRangeDict *&dictionary) {
+    int ret = OB_SUCCESS;
+    ObFTDictDesc desc(name, type, CHARSET_UTF8MB4, CS_TYPE_UTF8MB4_BIN);
+    if (OB_FAIL(hub.build_cache(desc, cache))) {
+    } else if (OB_ISNULL(dictionary = new (std::nothrow) ObFTRangeDict(allocator, &cache, desc))) {
+      ret = OB_ALLOCATE_MEMORY_FAILED;
+    } else if (OB_FAIL(dictionary->init())) {
+    }
+    return ret;
+  }
+};
+
+ObFTDictHub::~ObFTDictHub() { destroy(); }
+
+int ObFTDictHub::get_shared_ik_dicts(ObIFTDict *&main, ObIFTDict *&quantifier, ObIFTDict *&stop)
+{
+  int ret = OB_SUCCESS;
+  SharedIKDictionaries *shared = shared_ik_.load(std::memory_order_acquire);
+  if (!is_inited_) { ret = OB_NOT_INIT; }
+  else if (shared == nullptr) {
+    std::lock_guard<std::mutex> guard(shared_ik_mutex_);
+    shared = shared_ik_.load(std::memory_order_relaxed);
+    if (shared == nullptr) {
+      shared = new (std::nothrow) SharedIKDictionaries();
+      if (shared == nullptr) { ret = OB_ALLOCATE_MEMORY_FAILED; }
+      else if (OB_FAIL(shared->build(*this, ObFTDictType::DICT_IK_MAIN, "main_dict", shared->main_cache, shared->main))) {
+      } else if (OB_FAIL(shared->build(*this, ObFTDictType::DICT_IK_QUAN, "quan_dict", shared->quantifier_cache, shared->quantifier))) {
+      } else if (OB_FAIL(shared->build(*this, ObFTDictType::DICT_IK_STOP, "stopword", shared->stop_cache, shared->stop))) {
+      }
+      if (OB_SUCC(ret)) { shared_ik_.store(shared, std::memory_order_release); }
+      else { delete shared; shared = nullptr; }
+    }
+  }
+  if (OB_SUCC(ret)) { main = shared->main; quantifier = shared->quantifier; stop = shared->stop; }
+  return ret;
+}
+
 int ObFTDictHub::init()
 {
   static constexpr int K_MAX_DICT_BUCKET = 128; // for now, only built-in dicts.
@@ -44,6 +93,7 @@ int ObFTDictHub::destroy()
 {
   int ret = OB_SUCCESS;
   is_inited_ = false;
+  delete shared_ik_.exchange(nullptr, std::memory_order_acq_rel);
   return ret;
 }
 int ObFTDictHub::build_cache(const ObFTDictDesc &desc, ObFTCacheRangeContainer &container)

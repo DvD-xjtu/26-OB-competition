@@ -27,3 +27,16 @@ select1_avg_ms                  0.2362      0.2339
 All hit counts unchanged: 8001, 11000, 7332, 20.
 
 The three membership queries improved about 10-12%. Build/tokenization changes are within noise locally. LIMIT is not optimized and its measured time regressed 9.3% (after-run stdev 0.1831 ms versus 0.0055 ms before); this remains a limitation. Local timings are not official competition scores. CI results, not the much slower local SQL-loop baseline, determine the final score.
+
+Second iteration
+- Share immutable built-in IK dictionary wrappers and pinned cache handles across parser instances; publish only after all three dictionaries initialize successfully.
+- Classify each IK character after one Unicode decode.
+- Use a contiguous lowercase buffer and alphanumeric scan for ASCII BEng documents under supported UTF-8 collations; retain the existing pipeline otherwise.
+- 636 tokenizer cases match the pre-change reference, including four concurrent clients immediately after server restart. Official tokenize_function mysqltest passed unchanged.
+
+Same full benchmark after second iteration:
+build_ik_all_sec 9.106; build_ik_content_sec 7.264; build_beng_en_sec 3.848
+tokenize_ik_avg_ms 0.3265; tokenize_beng_avg_ms 0.2736
+query_cn_avg_ms 2.4237; query_beng_avg_ms 3.5107; query_mixed_avg_ms 2.3670; query_limit_avg_ms 3.1481
+select1_avg_ms 0.2339; all hit counts unchanged.
+These measurements are noisy (CN stdev 0.1403 ms, BEng 0.2670 ms); they do not establish a consistent query improvement over iteration one. Official iteration-one score was 11.607/50, up from 0.428/50. Second-iteration official result is pending.
