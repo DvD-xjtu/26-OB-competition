@@ -115,6 +115,41 @@ struct ObFilterTSC
 {
 };
 
+// Preserve explicitly referenced AI columns in cached plans. Synthetic DML
+// maintenance columns are not reads and must not activate strict mode.
+static int collect_ai_reads(const ObDMLStmt &stmt, share::schema::ObSchemaGetterGuard &guard,
+                            ObIArray<uint64_t> &tables, ObIArray<uint64_t> &columns)
+{
+  int ret = OB_SUCCESS;
+  for (int64_t i = 0; OB_SUCC(ret) && i < stmt.get_column_items().count(); ++i) {
+    const ColumnItem &item = stmt.get_column_items().at(i);
+    const TableItem *table = stmt.get_table_item_by_id(item.table_id_);
+    const share::schema::ObTableSchema *schema = nullptr;
+    if (item.expr_ == nullptr || !item.expr_->is_explicited_reference()
+        || table == nullptr || !table->is_basic_table()) {
+    } else if (OB_FAIL(guard.get_table_schema(table->ref_id_, schema))) {
+    } else if (schema != nullptr) {
+      const share::schema::ObColumnSchemaV2 *column = schema->get_column_schema(item.column_id_);
+      if (column != nullptr && column->is_ai_column()) {
+        bool found = false;
+        for (int64_t j = 0; j < tables.count(); ++j) {
+          found |= tables.at(j) == table->ref_id_ && columns.at(j) == item.column_id_;
+        }
+        if (!found) {
+          if (OB_FAIL(tables.push_back(table->ref_id_))) {
+          } else if (OB_FAIL(columns.push_back(item.column_id_))) {}
+        }
+      }
+    }
+  }
+  ObSEArray<ObSelectStmt *, 8> children;
+  if (OB_SUCC(ret) && OB_FAIL(stmt.get_child_stmts(children))) {}
+  for (int64_t i = 0; OB_SUCC(ret) && i < children.count(); ++i) {
+    if (children.at(i) != nullptr) { ret = SMART_CALL(collect_ai_reads(*children.at(i), guard, tables, columns)); }
+  }
+  return ret;
+}
+
 int ObStaticEngineCG::generate(const ObLogPlan &log_plan, ObPhysicalPlan &phy_plan)
 {
   int ret = OB_SUCCESS;
@@ -153,6 +188,11 @@ int ObStaticEngineCG::generate(const ObLogPlan &log_plan, ObPhysicalPlan &phy_pl
     phy_plan.set_is_use_auto_dop(opt_ctx_->is_use_auto_dop());
     if (OB_FAIL(set_properties_post(log_plan, phy_plan))) {
     }
+  }
+  if (OB_SUCC(ret) && log_plan.get_stmt() != nullptr && opt_ctx_->get_schema_guard() != nullptr) {
+    ObSEArray<uint64_t, 8> tables, columns;
+    if (OB_FAIL(collect_ai_reads(*log_plan.get_stmt(), *opt_ctx_->get_schema_guard(), tables, columns))) {
+    } else if (OB_FAIL(phy_plan.set_ai_read_columns(tables, columns))) {}
   }
   return ret;
 }

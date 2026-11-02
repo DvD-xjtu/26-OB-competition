@@ -16,6 +16,7 @@
 
 #define USING_LOG_PREFIX SQL_RESV
 #include "sql/resolver/ddl/ob_create_table_resolver.h"
+#include "share/ai_column/ai_column_ddl.h"
 #include "sql/resolver/dml/ob_select_resolver.h"
 #include "sql/resolver/ddl/ob_fts_index_builder_util.h"
 #include "sql/rewrite/ob_transform_utils.h"
@@ -895,6 +896,8 @@ int ObCreateTableResolver::resolve_table_elements(const ParseNode *node,
         }
       }
     }
+
+    if (OB_SUCC(ret)) { ret = share::finalize_ai_columns(table_schema); }
 
     // A table must have at least one column as a visible column
     if (OB_SUCC(ret)) {

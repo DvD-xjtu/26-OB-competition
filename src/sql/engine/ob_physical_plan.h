@@ -73,6 +73,15 @@ public:
 
   virtual void destroy();
   virtual void reset();
+  int set_ai_read_columns(const common::ObIArray<uint64_t> &tables,
+                          const common::ObIArray<uint64_t> &columns)
+  {
+    int ret = ai_read_table_ids_.assign(tables);
+    if (common::OB_SUCCESS == ret) { ret = ai_read_column_ids_.assign(columns); }
+    return ret;
+  }
+  const common::ObIArray<uint64_t> &get_ai_read_table_ids() const { return ai_read_table_ids_; }
+  const common::ObIArray<uint64_t> &get_ai_read_column_ids() const { return ai_read_column_ids_; }
   void set_is_last_exec_succ(bool val) { stat_.is_last_exec_succ_ = val; }
   bool is_last_exec_succ() const { return stat_.is_last_exec_succ_; }
   const ObString &get_constructed_sql() const { return stat_.constructed_sql_; }
@@ -384,6 +393,8 @@ private:
 private:
   DISALLOW_COPY_AND_ASSIGN(ObPhysicalPlan);
 private:
+  common::ObFixedArray<uint64_t, common::ObIAllocator> ai_read_table_ids_;
+  common::ObFixedArray<uint64_t, common::ObIAllocator> ai_read_column_ids_;
   ObPhyPlanHint phy_hint_; //hints for this plan
   // root operator spec for static typing engine.
   ObOpSpec *root_op_spec_;

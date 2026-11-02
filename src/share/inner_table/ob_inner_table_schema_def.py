@@ -342,7 +342,8 @@ all_column_def = dict(
       ('sub_data_type', 'int', 'false', '0'),
       ('skip_index_attr', 'int', 'false', '0'),
       ('lob_chunk_size', 'int', 'false', 'OB_DEFAULT_LOB_CHUNK_SIZE'),
-      ('local_session_vars', 'longtext', 'true')
+      ('local_session_vars', 'longtext', 'true'),
+      ('ai_column_info', 'longtext', 'true')
   ]
   )
 
@@ -2466,6 +2467,44 @@ all_objauth_mysql_def = dict(
   )
 def_table_schema(**all_objauth_mysql_def)
 def_table_schema(**gen_history_table_def(1134, all_objauth_mysql_def))
+
+
+def_table_schema(
+    owner = 'seekdb', table_name = '__all_ai_column', table_id = '1135',
+    table_type = 'SYSTEM_TABLE', gm_columns = ['gmt_create', 'gmt_modified'],
+    rowkey_columns = [('table_id', 'int'), ('column_id', 'int')],
+    normal_columns = [
+        ('column_name', 'varchar:128', 'false'),
+        ('normalized_expr', 'longtext', 'true'),
+        ('ai_column_info', 'longtext', 'true'),
+        ('max_retries', 'int', 'false', '2'),
+        ('state_column_id', 'int', 'false', '0'),
+        ('request_column_id', 'int', 'false', '0'),
+        ('result_spec_column_id', 'int', 'false', '0'),
+        ('definition_version', 'int', 'false', '1')])
+
+def_table_schema(
+    owner = 'seekdb', table_name = '__all_ai_column_task', table_id = '1136',
+    table_type = 'SYSTEM_TABLE', gm_columns = ['gmt_create', 'gmt_modified'],
+    rowkey_columns = [('table_id', 'int'), ('column_id', 'int'),
+                       ('rowkey_predicate', 'varbinary:2048')],
+    normal_columns = [
+        ('request_id', 'varchar:128', 'false'),
+        ('definition_version', 'int', 'false', '1'),
+        ('model_name', 'varchar:128', 'false'),
+        ('input_text', 'longtext', 'true'),
+        ('system_prompt', 'longtext', 'true'),
+        ('config', 'longtext', 'true'),
+        ('result_type', 'varchar:32', 'false'),
+        ('dimension', 'int', 'false', '0'),
+        ('max_retries', 'int', 'false', '2'),
+        ('retry_count', 'int', 'false', '0'),
+        ('state', 'int', 'false', '0'),
+        ('eligible_ts', 'timestamp:6', 'true'),
+        ('lease_owner', 'varchar:128', 'true'),
+        ('lease_expires', 'timestamp:6', 'true'),
+        ('result', 'longtext', 'true'),
+        ('last_error', 'int', 'false', '0')])
 
 
 # Reserved position (placeholder before this line)
