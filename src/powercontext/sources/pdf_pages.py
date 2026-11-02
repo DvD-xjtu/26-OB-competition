@@ -48,10 +48,10 @@ def parse_pdf_document(value: PDFDocumentInput) -> tuple[PDFPageInput, ...]:
 
     try:
         if not value.content or b"%PDF-" not in value.content[:1024] or b"%%EOF" not in value.content[-4096:]:
-            raise ValueError("incomplete PDF")  # noqa: TRY003
-        reader = PdfReader(io.BytesIO(value.content))
+            raise ValueError("incomplete PDF")  # noqa: TRY003, TRY301
+        reader = PdfReader(io.BytesIO(value.content), strict=True)
         if reader.is_encrypted and not reader.decrypt(""):
-            raise ValueError("PDF requires a password")  # noqa: TRY003
+            raise ValueError("PDF requires a password")  # noqa: TRY003, TRY301
         digest = hashlib.sha256(value.content).hexdigest()
         return tuple(
             PDFPageInput(
@@ -113,12 +113,88 @@ class PDFPageProjection:
 
 PDF_PAGE_SOURCE_DEFINITION = AdapterSourceDefinition(PDFPageAdapter(), version="1", projections=(PDFPageProjection(),))
 
-_STOP = set(
-    "a an the of for in on to and or as at by from is are was were be been has have had do does did "
-    "what which how when where why who that this it its with their any can only use using shown "
-    "give answer question respond response assuming perspective details calculate define reported "
-    "not if then state directly explicitly outlined quantity unadjusted fy usd millions".split()
-)
+_STOP = {
+    "a",
+    "an",
+    "analyst",
+    "and",
+    "answer",
+    "any",
+    "are",
+    "as",
+    "assuming",
+    "at",
+    "based",
+    "be",
+    "been",
+    "by",
+    "calculate",
+    "can",
+    "companies",
+    "company",
+    "define",
+    "details",
+    "did",
+    "directly",
+    "do",
+    "does",
+    "explicitly",
+    "fiscal",
+    "following",
+    "for",
+    "from",
+    "fy",
+    "give",
+    "had",
+    "has",
+    "have",
+    "how",
+    "if",
+    "in",
+    "investment",
+    "is",
+    "it",
+    "its",
+    "millions",
+    "not",
+    "of",
+    "on",
+    "only",
+    "or",
+    "outlined",
+    "perspective",
+    "quantity",
+    "question",
+    "relying",
+    "reported",
+    "respond",
+    "response",
+    "shown",
+    "state",
+    "statement",
+    "statements",
+    "that",
+    "the",
+    "their",
+    "then",
+    "this",
+    "to",
+    "unadjusted",
+    "usd",
+    "use",
+    "using",
+    "was",
+    "were",
+    "what",
+    "when",
+    "where",
+    "which",
+    "who",
+    "why",
+    "with",
+    "year",
+    "years",
+}
 _EXPANSIONS = {
     "geographies": "geographic geography countries international segments operations markets",
     "geographic": "countries international segments operations markets",
@@ -127,7 +203,7 @@ _EXPANSIONS = {
     "ebitda": "operating income depreciation amortization cash flows",
     "capex": "capital expenditures property plant equipment purchases",
     "restructuring": "restructuring impairment charges",
-    "income": "income earnings operations",
+    "income": "income earnings operations profit",
     "revenue": "revenue revenues sales",
     "margin": "income revenue revenues sales",
     "liquidity": "cash current assets liabilities",
@@ -146,7 +222,22 @@ _EXPANSIONS = {
     "repurchases": "repurchases shares stock treasury",
     "dividends": "dividends distributions stockholders",
     "operations": "operations segments business",
-    "operates": "operations segments business geographic countries international",
+    "operates": "operations segments divisions business geographic countries international",
+    "geography": "geographic geographies segments divisions countries international",
+    "ebit": "operating income profit earnings",
+    "roa": "income assets balance sheets",
+    "roe": "income equity stockholders shareholders",
+    "cogs": "cost sales revenue",
+    "employees": "employees employee workforce personnel",
+    "headcount": "employees employee workforce personnel",
+    "tax": "tax taxes provision income effective",
+    "taxes": "tax taxes provision income effective",
+    "working": "current assets liabilities",
+    "gross": "gross profit cost sales revenue",
+    "payout": "dividends income earnings",
+    "repurchase": "repurchase repurchases shares stock treasury",
+    "capital": "capital expenditures purchases property equipment",
+    "expenditures": "expenditures purchases property equipment",
 }
 
 
@@ -157,7 +248,9 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
     if limit == 0:
         return ()
     original = [token for token in re.findall(r"[a-z]+|\d+", question.lower()) if token not in _STOP]
-    weights = {token: 1.0 for token in original}
+    weights = {token: 0.15 if token.isdigit() else 1.0 for token in original}
+    if re.search(r"d\s*&\s*a", question.lower()):
+        weights.update(depreciation=1.0, amortization=1.0)
     for token in original:
         for expanded in _EXPANSIONS.get(token, "").split():
             weights[expanded] = max(weights.get(expanded, 0), 0.65)
@@ -170,82 +263,11 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
             hits[(hit.entry_id, hit.entry_version_id)] = hit
     if not hits:
         return ()
-    query_compact = re.sub(r"[^a-z0-9]", "", question.lower())
-    named_documents = set()
-    for hit in hits.values():
-        document_id = hit.text.partition("\n")[0]
-        company = re.split(r"[_ -](?:19|20)\d{2}", document_id.lower())[0]
-        company_key = re.sub(r"[^a-z0-9]", "", company)
-        if len(company_key) >= 2 and company_key in query_compact:
-            named_documents.add(document_id)
-    if named_documents:
-        hits = {key: hit for key, hit in hits.items() if hit.text.partition("\n")[0] in named_documents}
-    documents = [
-        (hit, Counter(re.findall(r"[a-z]+|\d+", hit.text.partition("\n")[2].lower()))) for hit in hits.values()
-    ]
-    df = Counter(term for _, counts in documents for term in counts)
-    average = sum(sum(counts.values()) for _, counts in documents) / len(documents)
+    ranked = _rank_candidates(hits, question, original, weights, limit)
+    return _page_citations(ranked, limit)
 
-    def score(pair):
-        hit, counts = pair
-        size = sum(counts.values())
-        value = 0.0
-        for term, weight in weights.items():
-            frequency = counts[term]
-            if frequency:
-                idf = math.log(1 + (len(documents) - df[term] + 0.5) / (df[term] + 0.5))
-                value += weight * idf * frequency * 2.2 / (frequency + 1.2 * (0.25 + 0.75 * size / average))
-        document_id, _, body = hit.text.partition("\n")
-        company = re.split(r"[_\d]", document_id.lower())[0]
-        if len(company) >= 3 and re.sub(r"[^a-z0-9]", "", company) in query_compact:
-            value *= 2
-        # Financial statement headings help distinguish primary tables from repeated narrative mentions.
-        heading = body[:600].lower()
-        if any(term in weights for term in ("income", "ebitda", "capex", "cash")):
-            if re.search(r"(consolidated|combined)\s+statements?\s+of", heading):
-                value *= 1.6
-        return value
 
-    ranked = sorted(documents, key=score, reverse=True)
-    # Reserve a small portion for primary statement tables when the query asks for financial quantities.
-    # A ratio or cash-flow question often requires complementary tables whose vocabulary differs.
-    quantitative = {
-        "income",
-        "ebitda",
-        "capex",
-        "margin",
-        "assets",
-        "liabilities",
-        "equity",
-        "debt",
-        "profit",
-        "profits",
-        "revenue",
-        "revenues",
-        "sales",
-        "cash",
-        "ratio",
-        "dividends",
-    }
-    if quantitative.intersection(original):
-        statements = []
-        patterns = (
-            r"(?:consolidated\s+)?(?:statements?\s+of\s+(?:income|operations|earnings)|income\s+statements?)",
-            r"(?:consolidated\s+)?(?:statements?\s+of\s+cash\s+flows?|cash\s+flows?\s+statements?)",
-            r"(?:consolidated\s+)?(?:balance\s+sheets?|statements?\s+of\s+financial\s+position)",
-        )
-        for pattern in patterns:
-            matches = [pair for pair in ranked if re.search(pattern, pair[0].text.partition("\n")[2][:700].lower())]
-            # Contents pages mention every statement; actual tables contain financial rows and numbers.
-            matches = [
-                pair
-                for pair in matches
-                if sum(count for term, count in pair[1].items() if term.isdigit()) >= 20
-                and "table of contents" not in pair[0].text.partition("\n")[2][:700].lower()
-            ]
-            statements.extend(matches[:2])
-        reserve = min(len(statements), max(1, limit // 3))
-        ranked = ranked[: max(0, limit - reserve)] + statements[:reserve] + ranked[max(0, limit - reserve) :]
+def _page_citations(ranked, limit):
     citations = []
     seen = set()
     for hit, _ in ranked:
@@ -264,3 +286,115 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
         if len(citations) == limit:
             break
     return tuple(citations)
+
+
+def _rank_candidates(hits, question, original, weights, limit):
+    query_compact = re.sub(r"[^a-z0-9]", "", question.lower())
+    named_documents = set()
+    for hit in hits.values():
+        document_id = hit.text.partition("\n")[0]
+        company = re.split(r"[_ -](?:19|20)\d{2}", document_id.lower())[0]
+        company_key = re.sub(r"[^a-z0-9]", "", company)
+        if len(company_key) >= 2 and company_key in query_compact:
+            named_documents.add(document_id)
+    if named_documents:
+        hits = {key: hit for key, hit in hits.items() if hit.text.partition("\n")[0] in named_documents}
+    if named_documents:
+        # The company name identifies a document; its repeated page headers add no topic evidence.
+        company_tokens = set()
+        for document_id in named_documents:
+            company_tokens.update(re.findall(r"[a-z]+", re.split(r"[_ -](?:19|20)\d{2}", document_id.lower())[0]))
+        weights = {term: weight for term, weight in weights.items() if term not in company_tokens}
+    documents = [
+        (hit, Counter(re.findall(r"[a-z]+|\d+", hit.text.partition("\n")[2].lower()))) for hit in hits.values()
+    ]
+    df = Counter(term for _, counts in documents for term in counts)
+    average = sum(sum(counts.values()) for _, counts in documents) / len(documents)
+
+    ranked = sorted(
+        documents,
+        key=lambda pair: _score_page(pair, weights, df, average, len(documents), original, query_compact),
+        reverse=True,
+    )
+    return _prioritize_statements(ranked, original, limit)
+
+
+def _prioritize_statements(ranked, original, limit):
+    quantitative = {
+        "income",
+        "ebitda",
+        "ebit",
+        "capex",
+        "margin",
+        "assets",
+        "liabilities",
+        "equity",
+        "debt",
+        "profit",
+        "profits",
+        "revenue",
+        "revenues",
+        "sales",
+        "cash",
+        "ratio",
+        "dividends",
+        "roa",
+        "roe",
+        "capital",
+        "expenditures",
+        "tax",
+        "taxes",
+        "balance",
+        "earnings",
+        "working",
+        "gross",
+    }
+    if quantitative.intersection(original):
+        # Caption lines distinguish actual financial tables from audit letters and prose references.
+        # Many SEC pages carry a "Table of Contents" navigation header, including the tables themselves.
+        patterns = (
+            r"(?m)^\s*(?:(?:consolidated|combined)\s+)?(?:statements?\s+of\s+(?:(?:consolidated|combined)\s+)?(?:income|operations|earnings)|income\s+statements?)",
+            r"(?m)^\s*(?:(?:consolidated|combined)\s+)?(?:statements?\s+of\s+(?:(?:consolidated|combined)\s+)?cash\s+flows?|cash\s+flows?\s+statements?)",
+            r"(?m)^\s*(?:(?:consolidated|combined)\s+)?(?:balance\s+sheets?|statements?\s+of\s+financial\s+position)",
+        )
+        statements = []
+        statement_ids = set()
+        for pattern in patterns:
+            for pair in ranked:
+                hit, counts = pair
+                body = hit.text.partition("\n")[2]
+                heading = re.sub(r"(?im)^\s*table of contents\s*$", "", body[:800]).strip().lower()
+                if (
+                    re.search(pattern, heading[:400])
+                    and sum(count for term, count in counts.items() if term.isdigit()) >= 20
+                    and hit.entry_id not in statement_ids
+                ):
+                    statements.append(pair)
+                    statement_ids.add(hit.entry_id)
+        reserve = min(len(statements), max(1, limit // 3))
+        # Ensure that reserved pages survive deduplication while still filling the remaining positions.
+        ranked = statements[:reserve] + ranked
+    return ranked
+
+
+def _score_page(pair, weights, df, average, total, original, query_compact):
+    hit, counts = pair
+    size = sum(counts.values())
+    value = 0.0
+    for term, weight in weights.items():
+        frequency = counts[term]
+        if frequency:
+            idf = math.log(1 + (total - df[term] + 0.5) / (df[term] + 0.5))
+            value += weight * idf * frequency * 2.2 / (frequency + 1.2 * (0.25 + 0.75 * size / average))
+    document_id, _, body = hit.text.partition("\n")
+    company = re.split(r"[_\d]", document_id.lower())[0]
+    if len(company) >= 3 and re.sub(r"[^a-z0-9]", "", company) in query_compact:
+        value *= 2
+    heading = re.sub(r"(?im)^\s*table of contents\s*$", "", body[:800]).strip().lower()
+    if ("legal" in original or "litigation" in original) and re.search(r"legal\s+proceedings", heading):
+        value *= 3
+    if any(word in original for word in ("geographies", "geographic", "geography", "operates")) and re.search(
+        r"(?:our|business|reportable|operating)\s+(?:divisions|segments|operations)|item\s+1[. ]+business", heading
+    ):
+        value *= 2
+    return value
