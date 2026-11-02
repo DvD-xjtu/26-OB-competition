@@ -167,6 +167,7 @@ from powercontext.builtin.runtime._scope_cache import (
     ScopeEvictor,
 )
 from powercontext.builtin.runtime.context_pack import ContextPack, ContextPackDelta
+from powercontext.builtin.runtime.source_lifecycle import SourceLifecycleApplication
 from powercontext.builtin.runtime.decision_model import DecisionModel
 from powercontext.builtin.runtime.errors import InvalidRuntimeRequestError, TopicMemoryProcessingUnavailableError
 from powercontext.builtin.runtime.models import (
@@ -2676,6 +2677,11 @@ class ScopedTopicMemoryApplication:
                     query_embedding,
                     embedding_timeout_seconds,
                 )
+        unavailable = await self._runtime.lifecycle.for_scope(self.scope_id).unavailable_topics()
+        if unavailable:
+            result = result.model_copy(update={"hits": tuple(
+                hit for hit in result.hits if hit.artifact_ref.artifact_id not in unavailable
+            )})
         observer = self._runtime._topic_memory_search_observer
         if observer is not None:
             try:
@@ -3118,6 +3124,7 @@ class BuiltinRuntime:
         self.handoff = HandoffApplication(self)
         self.work = WorkApplication(self)
         self.memory = MemoryApplication(self)
+        self.lifecycle = SourceLifecycleApplication(self)
         self.topic_memory = TopicMemoryApplication(self)
         self.records = RecordApplication(self)
         self.prompts = PromptApplication(self)

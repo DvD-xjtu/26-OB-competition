@@ -47,6 +47,7 @@ else:
     from multiprocessing.popen_spawn_posix import Popen as SpawnPopen
 
 from powercontext._logging import log_safely
+from powercontext.builtin.persistence.cursors import SourceCursorRepository
 from powercontext.builtin.persistence.database import AsyncDatabase
 from powercontext.builtin.persistence.errors import ArtifactProcessingLeadershipLostError
 from powercontext.builtin.persistence.processing_intents import ArtifactProcessingIntentRepository
@@ -57,7 +58,11 @@ from powercontext.builtin.persistence.supervision import (
     ArtifactProcessingLeaseRepository,
     database_utc_now,
 )
-from powercontext.builtin.persistence.tables import ARTIFACT_PROCESSING_INTENTS_TABLE, ARTIFACT_PROCESSING_LEASES_TABLE
+from powercontext.builtin.persistence.tables import (
+    ARTIFACT_PROCESSING_INTENTS_TABLE,
+    ARTIFACT_PROCESSING_LEASES_TABLE,
+    SOURCE_JOURNAL_HEADS_TABLE,
+)
 from powercontext.builtin.runtime.processing_contracts import (
     ArtifactProcessingWorkAssignment,
     ArtifactProcessingWorkerCompletion,
@@ -110,6 +115,7 @@ class ArtifactProcessingBinding:
     max_workers: int = 1
     worker_timeout_seconds: float = 600.0
     automatic_processing_interval: timedelta | None = None
+    source_count_threshold: int | None = None
     cron: str | None = None
     timezone: str = "Asia/Shanghai"
     config_prefix: str | None = None
@@ -396,6 +402,7 @@ class _FamilyState:
     scan_generation: int = 0
     scan_in_progress: bool = False
     reconcile_after: str | None = None
+    count_after: str | None = None
     reconcile_complete: bool = False
     notification_at_start: int = 0
     discovery_pending: bool = True
@@ -649,6 +656,7 @@ class ArtifactProcessingSupervisor:
         else:
             state.reconcile_complete = True
         # Alternate discovery channels so explicit traffic cannot monopolize admission.
+        await self._discover_count(state)
         state.automatic_next = not state.automatic_next
         if state.automatic_next:
             await self._discover_automatic(state)
@@ -656,6 +664,44 @@ class ArtifactProcessingSupervisor:
         else:
             await self._discover_requested(state)
             await self._discover_automatic(state)
+
+    async def _discover_count(self, state: _FamilyState) -> None:
+        threshold = state.binding.source_count_threshold
+        capacity = self._fresh_capacity(state)
+        if threshold is None or capacity <= 0:
+            return
+        heads = SOURCE_JOURNAL_HEADS_TABLE
+        statement = select(heads.c.scope_id, heads.c.position).order_by(heads.c.scope_id).limit(_DISCOVERY_PAGE_SIZE)
+        if state.count_after is not None:
+            statement = statement.where(heads.c.scope_id > state.count_after)
+        admitted = []
+        after = state.count_after
+        async with self._database.transaction() as connection:
+            await self._leases.require_fence(connection, self._require_current_fence())
+            rows = (await connection.execute(statement)).all()
+            cursors = await SourceCursorRepository().load_many(
+                connection, tuple(str(row[0]) for row in rows), state.binding.binding_name
+            )
+            for scope, high in rows:
+                after = str(scope)
+                if scope in state.queued or scope in state.running or scope in state.retries:
+                    continue
+                stored = cursors.get(scope)
+                cursor = 0 if stored is None else stored.cursor.sequence
+                if int(high) - cursor < threshold:
+                    continue
+                intent = await self._intents.load(connection, scope, state.binding.binding_name, for_update=True)
+                if intent is None or intent.requested_generation == intent.handled_generation:
+                    await self._intents.request(connection, scope, state.binding.binding_name)
+                admitted.append(scope)
+                if len(admitted) >= capacity:
+                    break
+            else:
+                if len(rows) < _DISCOVERY_PAGE_SIZE:
+                    after = None
+        state.count_after = after
+        for scope in admitted:
+            self._enqueue(state, scope)
 
     async def _discover_requested(self, state: _FamilyState) -> None:
         capacity = self._fresh_capacity(state)
@@ -1083,6 +1129,8 @@ class ArtifactProcessingSupervisor:
         for state in self._families.values():
             if len(state.running) >= state.binding.max_workers:
                 continue
+            if state.binding.source_count_threshold is not None:
+                deadlines.append(now + 0.25)
             deadlines.extend(
                 retry.deadline
                 for scope, retry in state.retries.items()

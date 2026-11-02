@@ -132,6 +132,21 @@ _EXPANSIONS = {
     "margin": "income revenue revenues sales",
     "liquidity": "cash current assets liabilities",
     "dividend": "dividend dividends distributions",
+    "assets": "assets balance sheets financial position",
+    "liabilities": "liabilities balance sheets financial position",
+    "equity": "equity shareholders stockholders balance sheets",
+    "debt": "debt borrowings obligations balance sheets",
+    "profit": "profit income earnings operations",
+    "profits": "profit income earnings operations",
+    "sales": "sales revenue revenues",
+    "growth": "revenue revenues sales income",
+    "cash": "cash flows operating investing financing",
+    "return": "income equity assets",
+    "ratio": "assets liabilities income equity",
+    "repurchases": "repurchases shares stock treasury",
+    "dividends": "dividends distributions stockholders",
+    "operations": "operations segments business",
+    "operates": "operations segments business geographic countries international",
 }
 
 
@@ -155,10 +170,21 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
             hits[(hit.entry_id, hit.entry_version_id)] = hit
     if not hits:
         return ()
-    documents = [(hit, Counter(re.findall(r"[a-z]+|\d+", hit.text.lower()))) for hit in hits.values()]
+    query_compact = re.sub(r"[^a-z0-9]", "", question.lower())
+    named_documents = set()
+    for hit in hits.values():
+        document_id = hit.text.partition("\n")[0]
+        company = re.split(r"[_ -](?:19|20)\d{2}", document_id.lower())[0]
+        company_key = re.sub(r"[^a-z0-9]", "", company)
+        if len(company_key) >= 2 and company_key in query_compact:
+            named_documents.add(document_id)
+    if named_documents:
+        hits = {key: hit for key, hit in hits.items() if hit.text.partition("\n")[0] in named_documents}
+    documents = [
+        (hit, Counter(re.findall(r"[a-z]+|\d+", hit.text.partition("\n")[2].lower()))) for hit in hits.values()
+    ]
     df = Counter(term for _, counts in documents for term in counts)
     average = sum(sum(counts.values()) for _, counts in documents) / len(documents)
-    query_compact = re.sub(r"[^a-z0-9]", "", question.lower())
 
     def score(pair):
         hit, counts = pair
@@ -181,6 +207,45 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
         return value
 
     ranked = sorted(documents, key=score, reverse=True)
+    # Reserve a small portion for primary statement tables when the query asks for financial quantities.
+    # A ratio or cash-flow question often requires complementary tables whose vocabulary differs.
+    quantitative = {
+        "income",
+        "ebitda",
+        "capex",
+        "margin",
+        "assets",
+        "liabilities",
+        "equity",
+        "debt",
+        "profit",
+        "profits",
+        "revenue",
+        "revenues",
+        "sales",
+        "cash",
+        "ratio",
+        "dividends",
+    }
+    if quantitative.intersection(original):
+        statements = []
+        patterns = (
+            r"(?:consolidated\s+)?(?:statements?\s+of\s+(?:income|operations|earnings)|income\s+statements?)",
+            r"(?:consolidated\s+)?(?:statements?\s+of\s+cash\s+flows?|cash\s+flows?\s+statements?)",
+            r"(?:consolidated\s+)?(?:balance\s+sheets?|statements?\s+of\s+financial\s+position)",
+        )
+        for pattern in patterns:
+            matches = [pair for pair in ranked if re.search(pattern, pair[0].text.partition("\n")[2][:700].lower())]
+            # Contents pages mention every statement; actual tables contain financial rows and numbers.
+            matches = [
+                pair
+                for pair in matches
+                if sum(count for term, count in pair[1].items() if term.isdigit()) >= 20
+                and "table of contents" not in pair[0].text.partition("\n")[2][:700].lower()
+            ]
+            statements.extend(matches[:2])
+        reserve = min(len(statements), max(1, limit // 3))
+        ranked = ranked[: max(0, limit - reserve)] + statements[:reserve] + ranked[max(0, limit - reserve) :]
     citations = []
     seen = set()
     for hit, _ in ranked:
