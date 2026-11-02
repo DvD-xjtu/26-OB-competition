@@ -278,6 +278,16 @@ public:
     return ht_.atomic_refactored(key, callback);
   };
 
+  // Expose the entry under the bucket lock when an equivalent key's stored
+  // representation must be updated together with its value.  The replacement
+  // key must compare equal to the lookup key and have the same hash.
+  template <class _callback>
+  int atomic_entry_refactored(const _key_type &key, _callback &callback)
+  {
+    auto entry = [](pair_type &pair) -> pair_type & { return pair; };
+    return ht_.atomic(key, callback, entry);
+  }
+
   // this operation will rdlock on bucket, if there is writing in callback, keep atomic by yourself.
   template <class _callback>
   int read_atomic(const _key_type &key, _callback &callback)

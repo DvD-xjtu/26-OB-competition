@@ -17,6 +17,11 @@ ascii_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !@
 documents += [''.join(rng.choices(ascii_chars, k=rng.randrange(1, 2000))) for _ in range(100)]
 documents += ['hello\x00WORLD trailing', 'A' * 9000, 'UPPER lower MiXeD', '\t\r\n...---___']
 documents += [('中文数据库 OceanBase 123 公斤。' * 1500), ('abcXYZ +test ' * 2000)]
+# Repeated words exercise the grouped-token update, including spellings that
+# can compare equal under a case/accent-insensitive collation.  Many distinct
+# words also exercise hash-table growth and collisions.
+documents += ['cafe café CAFE café café', '数据库 数据库 OceanBase oceanbase 数据库',
+              ' '.join('word%05d' % i for i in range(2000))]
 connection = pymysql.connect(unix_socket=os.environ['FTS_TEST_SOCKET'], user='root', charset='utf8mb4')
 results = []
 with connection.cursor() as cursor:

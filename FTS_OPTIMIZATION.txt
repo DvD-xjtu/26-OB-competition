@@ -40,3 +40,8 @@ tokenize_ik_avg_ms 0.3265; tokenize_beng_avg_ms 0.2736
 query_cn_avg_ms 2.4237; query_beng_avg_ms 3.5107; query_mixed_avg_ms 2.3670; query_limit_avg_ms 3.1481
 select1_avg_ms 0.2339; all hit counts unchanged.
 These measurements are noisy (CN stdev 0.1403 ms, BEng 0.2670 ms); they do not establish a consistent query improvement over iteration one. Official iteration-one score was 11.607/50, up from 0.428/50. Second-iteration official result is pending.
+
+Third iteration (pending end-to-end validation)
+- Grouped token hits update the existing hash entry under its bucket lock. The previous path performed a lookup followed by an overwriting insertion, which allocated and replaced a hash node even for an existing word.
+- Retain the last spelling for collation-equivalent words and the existing initial and subsequent frequency semantics. Missing keys still use the normal insertion path, including hash-table growth.
+- Added repeated, collation-equivalent, and many-distinct-word inputs to the reference comparison script. Production source compiled locally as a single translation unit with the generated project flags and extra suppressions for warnings from the installed Apple compiler. Full SQL equivalence, full benchmark, and official score have not been run for this iteration; the actual performance impact remains unknown.
