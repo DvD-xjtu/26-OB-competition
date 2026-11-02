@@ -18,6 +18,7 @@ struct FileSqlColumn {
   std::string name;
   common::ObObjType type = common::ObNullType;
   bool nullable = false;
+  int16_t temporal_scale = 0;
 };
 struct FileSqlOptions {
   std::string format = "csv";

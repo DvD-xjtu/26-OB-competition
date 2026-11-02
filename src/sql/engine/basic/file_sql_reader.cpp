@@ -251,8 +251,10 @@ ObObjType FileSqlReader::infer_type(const FileSqlCell &cell)
   if (!s.empty() && end == s.c_str() + s.size() && errno == 0 && std::isfinite(number)) { return ObDoubleType; }
   if (date(s)) {
     if (s.size() == 10) { return ObDateType; }
-    if (s.size() == 19 && (s[10] == ' ' || s[10] == 'T') && s[13] == ':' && s[16] == ':') {
-      std::string time = s.substr(11);
+    if ((s.size() == 19 || (s.size() >= 21 && s.size() <= 26 && s[19] == '.'
+        && s.find_first_not_of("0123456789", 20) == std::string::npos))
+        && (s[10] == ' ' || s[10] == 'T') && s[13] == ':' && s[16] == ':') {
+      std::string time = s.substr(11, 8);
       bool valid = true;
       for (size_t i = 0; i < time.size(); ++i) { if (i != 2 && i != 5 && (time[i] < '0' || time[i] > '9')) { valid = false; } }
       if (valid && std::atoi(time.c_str()) < 24 && std::atoi(time.c_str() + 3) < 60 && std::atoi(time.c_str() + 6) < 60) {
@@ -273,12 +275,26 @@ ObObjType FileSqlReader::widen(ObObjType lhs, ObObjType rhs)
   if ((lhs == ObDateType || lhs == ObDateTimeType) && (rhs == ObDateType || rhs == ObDateTimeType)) { return ObDateTimeType; }
   return ObVarcharType;
 }
+static void update_temporal_scale(FileSqlColumn &column, const FileSqlCell &cell)
+{
+  if (!cell.is_null && column.type == ObDateTimeType) {
+    const size_t dot = cell.text.find('.', 19);
+    if (dot != std::string::npos) {
+      int16_t scale = 0;
+      for (size_t i = dot + 1; i < cell.text.size() && cell.text[i] >= '0' && cell.text[i] <= '9' && scale < 6; ++i) { ++scale; }
+      column.temporal_scale = std::max(column.temporal_scale, scale);
+    }
+  }
+}
+
 int FileSqlReader::infer()
 {
   if (options_.format == "parquet") {
     if (parquet_ == nullptr) { parquet_ = new (std::nothrow) FileSqlParquet(); }
     if (parquet_ == nullptr) { return OB_ALLOCATE_MEMORY_FAILED; }
-    return parquet_->open(file_, size_, columns_) ? OB_SUCCESS : fail("invalid or unsupported Parquet file");
+    if (!parquet_->open(file_, size_, columns_)) { return fail("invalid or unsupported Parquet file"); }
+    for (auto &column : columns_) { if (column.type == ObDateTimeType) { column.temporal_scale = 6; } }
+    return OB_SUCCESS;
   }
   if (directory_ != nullptr) { return rewind(); }
   if (file_ == nullptr) { return OB_NOT_INIT; }
@@ -305,12 +321,12 @@ int FileSqlReader::infer()
         for (size_t i = 0; i < row.size(); ++i) { columns_.push_back({"column" + std::to_string(i + 1), ObNullType}); }
       }
       if (row.size() != columns_.size()) { return fail("CSV field count does not match schema"); }
-      for (size_t i = 0; i < row.size(); ++i) { columns_[i].type = widen(columns_[i].type, infer_type(row[i])); columns_[i].nullable |= row[i].is_null; }
+      for (size_t i = 0; i < row.size(); ++i) { columns_[i].type = widen(columns_[i].type, infer_type(row[i])); columns_[i].nullable |= row[i].is_null; update_temporal_scale(columns_[i], row[i]); }
     } else {
       for (size_t i = 0; i < keys.size(); ++i) {
         auto found = std::find_if(columns_.begin(), columns_.end(), [&](const FileSqlColumn &c) { return c.name == keys[i]; });
-        if (found == columns_.end()) { columns_.push_back({keys[i], infer_type(row[i]), record_ > 1 || row[i].is_null}); }
-        else { found->type = widen(found->type, infer_type(row[i])); found->nullable |= row[i].is_null; }
+        if (found == columns_.end()) { columns_.push_back({keys[i], infer_type(row[i]), record_ > 1 || row[i].is_null}); update_temporal_scale(columns_.back(), row[i]); }
+        else { found->type = widen(found->type, infer_type(row[i])); found->nullable |= row[i].is_null; update_temporal_scale(*found, row[i]); }
       }
       for (auto &column : columns_) { if (std::find(keys.begin(), keys.end(), column.name) == keys.end()) { column.nullable = true; } }
       if (columns_.size() > MAX_COLUMNS) { return fail("column resource limit exceeded"); }

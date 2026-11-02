@@ -4021,6 +4021,7 @@ int ObDMLResolver::resolve_file_table_item(const ParseNode &parse_tree, TableIte
       meta.set_collation_level(column.type == ObVarcharType ? CS_LEVEL_IMPLICIT : CS_LEVEL_NUMERIC);
       ObAccuracy accuracy = ObAccuracy::DDL_DEFAULT_ACCURACY[column.type];
       if (column.type == ObVarcharType) { accuracy.set_length(16 * 1024 * 1024); }
+      if (column.type == ObDateTimeType) { accuracy.set_scale(column.temporal_scale); }
       ObString column_name; ColumnItem *item = nullptr;
       if (OB_FAIL(ob_write_string(*allocator_, ObString(column.name.size(), column.name.data()), column_name))) {
       } else if (OB_FAIL(resolve_function_table_column_item(*table_item, meta, accuracy, column_name,
