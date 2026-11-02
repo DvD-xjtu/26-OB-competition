@@ -17,6 +17,9 @@
 from __future__ import annotations
 
 import json
+import math
+import re
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from itertools import chain
@@ -106,6 +109,7 @@ class PreparedContextBuild:
     origins: tuple[PreparedContextOrigin, ...]
     omissions: PreparedContextOmissions = PreparedContextOmissions()
     code_origins: tuple[CodeEvidenceRef, ...] = ()
+    fragments: tuple[PreparedEvidenceFragment, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -115,6 +119,16 @@ class MemoryEntryAddress:
     memory: ArtifactAddress
     entry_id: str
     entry_version_id: str
+
+
+@dataclass(frozen=True)
+class PreparedEvidenceFragment:
+    """An unchanged half-open span in an exactly cited Memory entry."""
+
+    address: MemoryEntryAddress
+    start: int
+    end: int
+    text: str
 
 
 PreparedContextOrigin = MemoryCitation | ArtifactRef | MemoryEntryAddress | ArtifactAddress
@@ -211,6 +225,8 @@ class PreparedContextBuilder:
         profile_candidates: Sequence[PreparedProfileCandidate] = (),
         code_candidates: Sequence[PreparedCodeCandidate] = (),
     ) -> PreparedContextBuild:
+        if request.evidence_selection:
+            return _select_evidence(request, memory_candidates)
         if request.include_code:
 
             def historical(history_request: PrepareContextRequest, entries: int) -> PreparedContextBuild:
@@ -683,6 +699,116 @@ def _interleave_groups(groups: Sequence[Sequence[_Item]]) -> tuple[_Item, ...]:
     for index in range(max((len(group) for group in groups), default=0)):
         ordered.extend(group[index] for group in groups if index < len(group))
     return tuple(ordered)
+
+
+def _evidence_terms(text: str) -> Counter:
+    stop = set(
+        "a an the is are was were be been of in on at to for from by with and or that this these those "
+        "it its as has have had can could would should do does did than into through".split()
+    )
+    terms = []
+    for token in re.findall(r"\w+", text.lower()):
+        if token in stop:
+            continue
+        if len(token) > 5:
+            token = re.sub(r"(ing|ed|es|s)$", "", token)
+        terms.append(token)
+    return Counter(terms)
+
+
+def _render_fragments(fragments: Sequence[PreparedEvidenceFragment]) -> str:
+    items = [
+        {
+            "citation": {
+                "scope_id": fragment.address.memory.scope_id,
+                "memory_ref": fragment.address.memory.artifact.model_dump(mode="json"),
+                "entry_id": fragment.address.entry_id,
+                "entry_version_id": fragment.address.entry_version_id,
+            },
+            "content": fragment.text,
+            "start": fragment.start,
+            "end": fragment.end,
+        }
+        for fragment in fragments
+    ]
+    encoded = json.dumps({"trust": "untrusted_history", "items": items}, ensure_ascii=False, separators=(",", ":"))
+    return "\n\n".join((TRUST_POLICY, f"{_BEGIN_MARKER}\n{encoded}\n{_END_MARKER}"))
+
+
+def _select_evidence(
+    request: PrepareContextRequest, groups: Sequence[PreparedMemoryCandidates]
+) -> PreparedContextBuild:
+    query = _evidence_terms(request.query)
+    candidates = []
+    texts = {}
+    for group in groups:
+        for hit in group.hits:
+            address = MemoryEntryAddress(
+                memory=ArtifactAddress(scope_id=group.scope_id, artifact=hit.memory_ref),
+                entry_id=hit.entry_id,
+                entry_version_id=hit.entry_version_id,
+            )
+            identity = (group.scope_id, hit.entry_id, hit.entry_version_id)
+            texts[identity] = hit.text
+            # Split at sentence boundaries without splitting decimals or changing source coordinates.
+            starts = [0] + [
+                match.end() for match in re.finditer(r"(?<=[.!?。！？])\s+(?=[A-Z0-9\u4e00-\u9fff])|\n+", hit.text)
+            ]
+            ends = starts[1:] + [len(hit.text)]
+            for start, end in zip(starts, ends, strict=True):
+                while start < end and hit.text[start].isspace():
+                    start += 1
+                while end > start and hit.text[end - 1].isspace():
+                    end -= 1
+                if start < end:
+                    fragment = PreparedEvidenceFragment(address, start, end, hit.text[start:end])
+                    candidates.append((fragment, _evidence_terms(fragment.text), identity))
+    df = Counter(term for _, terms, _ in candidates for term in terms)
+    average = sum(sum(terms.values()) for _, terms, _ in candidates) / max(len(candidates), 1)
+
+    def rank(candidate):
+        fragment, terms, _ = candidate
+        length = sum(terms.values())
+        relevance = sum(
+            math.log(1 + (len(candidates) + 0.5) / (df[term] + 0.5))
+            * terms[term]
+            * 2.2
+            / (terms[term] + 1.2 * (0.25 + 0.75 * length / max(average, 1)))
+            for term in query
+            if terms[term]
+        )
+        coverage = sum(term in terms for term in query) / max(len(query), 1)
+        return relevance * (1 + coverage)
+
+    selected: list[PreparedEvidenceFragment] = []
+    seen = set()
+    for candidate in sorted(candidates, key=rank, reverse=True):
+        fragment, _, identity = candidate
+        if rank(candidate) <= 0 or (identity, fragment.text) in seen:
+            continue
+        trial = list(selected)
+        merged = fragment
+        # Adjacent spans share one citation; the intervening whitespace remains literal.
+        for previous in selected:
+            if previous.address == fragment.address:
+                left, right = sorted((previous, merged), key=lambda part: part.start)
+                gap = texts[identity][left.end : right.start]
+                if left.end >= right.start or not gap.strip():
+                    start, end = min(left.start, right.start), max(left.end, right.end)
+                    merged = PreparedEvidenceFragment(fragment.address, start, end, texts[identity][start:end])
+                    trial.remove(previous)
+        trial.append(merged)
+        if len(_render_fragments(trial).encode("utf-8")) <= request.max_bytes:
+            selected = trial
+            seen.add((identity, fragment.text))
+    if not selected:
+        return PreparedContextBuild(context=PreparedContext(status="empty", content=None, content_bytes=0), origins=())
+    content = _render_fragments(selected)
+    return PreparedContextBuild(
+        context=PreparedContext(status="ready", content=content, content_bytes=len(content.encode("utf-8"))),
+        origins=tuple(fragment.address for fragment in selected),
+        fragments=tuple(selected),
+    )
 
 
 def _render(entries: Sequence[_PreparedContextEntry]) -> str:
