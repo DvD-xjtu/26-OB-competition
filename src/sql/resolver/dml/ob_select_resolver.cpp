@@ -15,6 +15,7 @@
  */
 
 #define USING_LOG_PREFIX SQL_RESV
+#include "sql/engine/basic/file_sql_copy.h"
 #include "sql/resolver/dml/ob_select_resolver.h"
 #include "sql/resolver/dml/ob_del_upd_resolver.h"
 #include "share/ob_time_utility2.h"
@@ -3105,7 +3106,39 @@ int ObSelectResolver::resolve_into_clause(const ParseNode *node)
       new(into_item) ObSelectIntoItem();
       into_item->into_type_ = node->type_;
       if (T_INTO_OUTFILE == node->type_) { // into outfile
-        if (is_in_set_query()) {
+        if (node->value_ == 1 && node->num_child_ == 2) {
+          bool enabled = false;
+          FileSqlCopyOptions options;
+          if (OB_FAIL(session_info_->get_sys_variable(share::SYS_VAR_ENABLE_FILE_SQL, enabled))) {
+          } else if (!enabled) { ret = OB_NOT_SUPPORTED;
+          } else if (OB_FAIL(resolve_into_const_node(node->children_[0], into_item->outfile_name_))) {
+          } else {
+            const ParseNode *args = node->children_[1];
+            for (int64_t i=0; OB_SUCC(ret) && args != nullptr && i<args->num_child_; ++i) {
+              const ParseNode *arg=args->children_[i];
+              const ParseNode *key=arg->children_[0], *value=arg->children_[1];
+              std::string name(key->str_value_,key->str_len_);
+              std::transform(name.begin(),name.end(),name.begin(),[](unsigned char c){return std::tolower(c);});
+              std::string text=value!=nullptr&&value->str_value_!=nullptr?std::string(value->str_value_,value->str_len_):std::string();
+              if (name=="header") { if (value==nullptr) { options.header=true; } else if (value->type_==T_BOOL) { options.header=value->value_; } else { ret=OB_INVALID_ARGUMENT; } }
+              else if (name=="format") { std::transform(text.begin(),text.end(),text.begin(),[](unsigned char c){return std::tolower(c);}); if(text!="csv") { ret=OB_NOT_SUPPORTED; } }
+              else if (name=="nullstr") { if(value==nullptr||value->type_!=T_VARCHAR) { ret=OB_INVALID_ARGUMENT; } else { options.null_text=text; } }
+              else if (name=="delimiter"||name=="delim"||name=="sep"||name=="quote"||name=="escape") {
+                if(value==nullptr||value->type_!=T_VARCHAR||text.size()!=1) { ret=OB_INVALID_ARGUMENT; }
+                else if(name=="quote") { options.quote=text[0]; } else if(name=="escape") { options.escape=text[0]; } else { options.delimiter=text[0]; }
+              } else { ret=OB_INVALID_ARGUMENT; }
+            }
+            for(int64_t i=0; OB_SUCC(ret) && i<select_stmt->get_select_item_size(); ++i) {
+              const SelectItem &item=select_stmt->get_select_item(i);
+              const ObString &name=item.alias_name_.empty()?item.expr_name_:item.alias_name_;
+              options.names.emplace_back(name.ptr(),name.length());
+            }
+            std::string descriptor=options.encode();
+            FileSqlCopyOptions checked;
+            if(OB_SUCC(ret) && !checked.decode(descriptor)) { ret=OB_INVALID_ARGUMENT; }
+            if(OB_SUCC(ret)) { ret=ob_write_string(*allocator_,ObString(descriptor.size(),descriptor.data()),into_item->external_properties_); }
+          }
+        } else if (is_in_set_query()) {
           ret = OB_INAPPROPRIATE_INTO;
         } else if (node->num_child_ == 3 && NULL != node->children_[1]
             && T_EXTERNAL_FILE_FORMAT == node->children_[1]->type_) { // Handle with `FORMAT`

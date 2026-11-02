@@ -41,8 +41,112 @@ OB_SERIALIZE_MEMBER((ObSelectIntoSpec, ObOpSpec), into_type_, user_vars_, outfil
     external_properties_);
 
 
+int ObSelectIntoOp::init_file_copy()
+{
+  int ret = OB_SUCCESS;
+  bool enabled = false;
+  ObString secure;
+  const ObString &descriptor = MY_SPEC.external_properties_.str_;
+  if (OB_FAIL(ctx_.get_my_session()->get_sys_variable(share::SYS_VAR_ENABLE_FILE_SQL, enabled))) {
+  } else if (!enabled) { ret = OB_NOT_SUPPORTED;
+  } else if (OB_ISNULL(copy_writer_ = new (std::nothrow) FileSqlCopyWriter())) { ret = OB_ALLOCATE_MEMORY_FAILED;
+  } else if (!copy_writer_->options.decode(std::string(descriptor.ptr(), descriptor.length()))) { ret = OB_INVALID_ARGUMENT;
+  } else if (OB_FAIL(ctx_.get_my_session()->get_sql_select_limit(top_limit_cnt_))) {
+  } else {
+    ObString name = MY_SPEC.outfile_name_.get_string();
+    std::string path(name.ptr(), name.length());
+    size_t slash = path.find_last_of('/');
+    std::string parent = slash == std::string::npos ? "." : path.substr(0, slash);
+    std::string basename = slash == std::string::npos ? path : path.substr(slash + 1);
+    if (parent.empty()) { parent = "/"; }
+    char resolved[4096];
+#ifdef _WIN32
+    ret = OB_NOT_SUPPORTED;
+#else
+    if (path.find('\0') != std::string::npos || basename.empty() || basename == "." || basename == ".."
+        || realpath(parent.c_str(), resolved) == nullptr) { ret = OB_INVALID_ARGUMENT;
+    } else {
+      path = std::string(resolved) + "/" + basename;
+      if (OB_FAIL(ctx_.get_my_session()->get_secure_file_priv(secure))) {
+      } else if (OB_FAIL(ObResolverUtils::check_secure_path(secure, ObString(path.size(), path.data())))) {
+      } else if (!copy_writer_->open(path, [&](const std::string &canonical) {
+        ret = ObResolverUtils::check_secure_path(secure, ObString(canonical.size(), canonical.data())); return ret == OB_SUCCESS;
+      })) { if (OB_SUCC(ret)) { ret = OB_IO_ERROR; }
+      } else if (copy_writer_->options.header && !copy_writer_->write(copy_writer_->options.names,
+                           std::vector<bool>(copy_writer_->options.names.size(), false))) { ret = OB_IO_ERROR; }
+    }
+#endif
+  }
+  opened_ = true;
+  if (OB_FAIL(ret) && copy_writer_ != nullptr) { copy_writer_->abort(); }
+  return ret;
+}
+int ObSelectIntoOp::write_file_copy_row()
+{
+  int ret = OB_SUCCESS;
+  std::vector<std::string> values;
+  std::vector<bool> nulls;
+  if (copy_buffer_.empty()) { copy_buffer_.resize(16 * 1024 * 1024); }
+  for (int64_t i = 0; OB_SUCC(ret) && i < MY_SPEC.select_exprs_.count(); ++i) {
+    ObExpr *expr = MY_SPEC.select_exprs_.at(i);
+    ObDatum *datum = nullptr;
+    ObObj value;
+    int64_t pos = 0;
+    if (OB_FAIL(expr->eval(eval_ctx_, datum))) {
+    } else if (OB_FAIL(datum->to_obj(value, expr->obj_meta_))) {
+    } else {
+      nulls.push_back(value.is_null());
+      if (value.is_null()) { values.emplace_back();
+      } else if (value.is_varchar() || value.is_char()) {
+        ObString text = value.get_string(); values.emplace_back(text.ptr(), text.length());
+      } else if (OB_FAIL(value.print_plain_str_literal(copy_buffer_.data(), copy_buffer_.size(), pos))) {
+      } else { values.emplace_back(copy_buffer_.data(), pos); }
+    }
+  }
+  if (OB_SUCC(ret) && !copy_writer_->write(values, nulls)) { ret = OB_IO_ERROR; }
+  return ret;
+}
+int ObSelectIntoOp::execute_file_copy(bool batched, int64_t batch_size)
+{
+  int ret = OB_SUCCESS;
+  if (copy_done_) { return ret; }
+  int64_t count = 0;
+  if (batched) {
+    const ObBatchRows *batch = nullptr;
+    ObEvalCtx::BatchInfoScopeGuard guard(eval_ctx_);
+    while (OB_SUCC(ret) && count < top_limit_cnt_) {
+      clear_evaluated_flag();
+      if (OB_FAIL(ctx_.check_status())) {
+      } else if (OB_FAIL(child_->get_next_batch(std::min<int64_t>(batch_size, top_limit_cnt_ - count), batch))) {
+      } else {
+        guard.set_batch_size(batch->size_);
+        for (int64_t i = 0; OB_SUCC(ret) && i < batch->size_; ++i) {
+          if (!batch->skip_->contain(i)) { guard.set_batch_idx(i); ret = write_file_copy_row(); ++count; }
+        }
+        if (batch->end_) { break; }
+      }
+    }
+  } else {
+    while (OB_SUCC(ret) && count < top_limit_cnt_) {
+      clear_evaluated_flag();
+      if (OB_FAIL(ctx_.check_status())) {
+      } else if (OB_FAIL(child_->get_next_row())) {
+      } else { ret = write_file_copy_row(); ++count; }
+    }
+    if (ret == OB_ITER_END) { ret = OB_SUCCESS; }
+  }
+  copy_done_ = true;
+  if (OB_SUCC(ret) && !copy_writer_->commit()) { ret = OB_IO_ERROR; }
+  if (OB_FAIL(ret)) { copy_writer_->abort(); }
+  if (OB_SUCC(ret)) { ctx_.get_physical_plan_ctx()->set_affected_rows(count); }
+  return ret;
+}
+
 int ObSelectIntoOp::inner_open()
 {
+  const ObString &properties = MY_SPEC.external_properties_.str_;
+  if (FileSqlCopyOptions::matches(std::string(properties.ptr(), properties.length()))) { return init_file_copy(); }
+
   int ret = OB_SUCCESS;
   ObSQLSessionInfo *session = NULL;
   if (OB_ISNULL(session = ctx_.get_my_session())) {
@@ -188,6 +292,7 @@ int ObSelectIntoOp::calc_outfile_path()
 }
 int ObSelectIntoOp::inner_get_next_row()
 {
+  if (copy_writer_ != nullptr) { int status = execute_file_copy(false, 1); return status == OB_SUCCESS ? OB_ITER_END : status; }
   int ret = 0 == top_limit_cnt_ ? OB_ITER_END : OB_SUCCESS;
   int64_t row_count = 0;
   const ObItemType into_type = MY_SPEC.into_type_;
@@ -236,6 +341,7 @@ int ObSelectIntoOp::inner_get_next_row()
 
 int ObSelectIntoOp::inner_get_next_batch(const int64_t max_row_cnt)
 {
+  if (copy_writer_ != nullptr) { brs_.size_ = 0; brs_.end_ = true; return execute_file_copy(true, max_row_cnt); }
   int ret = OB_SUCCESS;
   const ObBatchRows *child_brs = NULL;
   int64_t batch_size = min(max_row_cnt, MY_SPEC.max_batch_size_);
@@ -324,6 +430,8 @@ int ObSelectIntoOp::inner_rescan()
 
 int ObSelectIntoOp::inner_close()
 {
+  delete copy_writer_; copy_writer_ = nullptr;
+  std::vector<char>().swap(copy_buffer_);
   int ret = OB_SUCCESS;
   if (OB_NOT_NULL(data_writer_) && OB_FAIL(data_writer_->close_data_writer())) {
   }
@@ -1275,6 +1383,8 @@ int ObSelectIntoOp::new_data_writer(ObExternalFileWriter *&data_writer)
 
 void ObSelectIntoOp::destroy()
 {
+  delete copy_writer_; copy_writer_ = nullptr;
+  std::vector<char>().swap(copy_buffer_);
   if (OB_NOT_NULL(data_writer_)) {
     data_writer_->~ObExternalFileWriter();
   }

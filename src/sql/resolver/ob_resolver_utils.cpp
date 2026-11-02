@@ -16,6 +16,7 @@
 
 #define USING_LOG_PREFIX SQL_RESV
 
+#include "sql/engine/basic/file_sql_reader.h"
 #include "config_bridge.h"
 #include "share/config/ob_config_helper.h"
 #include "sql/resolver/cmd/ob_load_data_stmt.h"
@@ -120,6 +121,24 @@ int ObResolverUtils::get_all_function_table_column_names(const TableItem &table_
                                                          ObResolverParams &params,
                                                          ObIArray<ObString> &column_names)
 {
+  if (table_item.function_table_expr_ != nullptr && table_item.function_table_expr_->is_const_raw_expr()) {
+    const ObObj &value = static_cast<const ObConstRawExpr *>(table_item.function_table_expr_)->get_value();
+    if (value.is_varchar()) {
+      std::string descriptor(value.get_string().ptr(), value.get_string().length());
+      if (FileSqlReader::is_descriptor(descriptor)) {
+        FileSqlReader reader;
+        int status = reader.open_descriptor(descriptor);
+        if (status != OB_SUCCESS) { return status; }
+        for (const auto &column : reader.columns()) {
+          ObString name;
+          status = ob_write_string(*params.allocator_, ObString(column.name.size(), column.name.data()), name);
+          if (status == OB_SUCCESS) { status = column_names.push_back(name); }
+          if (status != OB_SUCCESS) { return status; }
+        }
+        return OB_SUCCESS;
+      }
+    }
+  }
   int ret = OB_SUCCESS;
   ObRawExpr *table_expr = NULL;
   ObPLPackageGuard *package_guard = nullptr;

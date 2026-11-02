@@ -18,6 +18,7 @@
 #define OCEANBASE_BASIC_OB_FUNCTION_TABLE_OP_H_
 
 #include "sql/engine/ob_operator.h"
+#include "sql/engine/basic/file_sql_reader.h"
 #include "sql/engine/basic/ob_chunk_datum_store.h"
 #include "lib/charset/ob_charset.h"
 
@@ -58,6 +59,10 @@ public:
   virtual int inner_close() override;
   virtual void destroy() override;
 private:
+  int inner_get_next_row_file();
+  FileSqlReader *file_reader_ = nullptr;
+  std::vector<FileSqlCell> file_row_;
+  common::ObArenaAllocator file_cast_allocator_;
   int inner_get_next_row_udf();
   int inner_get_next_row_sys_func();
   int get_current_result(common::ObObj &result);

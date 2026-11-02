@@ -15,6 +15,7 @@
  */
 
 #define USING_LOG_PREFIX SQL_RESV
+#include "sql/engine/basic/file_sql_reader.h"
 #include "config_bridge.h"
 #include "ob_dml_resolver.h"
 #include "sql/resolver/dml/ob_view_table_resolver.h"
@@ -3923,9 +3924,120 @@ int ObDMLResolver::resolve_json_table_item(const ParseNode &parse_tree, TableIte
   return ret;
 }
 
+
+int ObDMLResolver::resolve_file_table_item(const ParseNode &parse_tree, TableItem *&table_item)
+{
+  int ret = OB_SUCCESS;
+  bool enabled = false;
+  if (OB_FAIL(session_info_->get_sys_variable(share::SYS_VAR_ENABLE_FILE_SQL, enabled))) { return ret; }
+  if (!enabled) {
+    LOG_USER_ERROR(OB_NOT_SUPPORTED, "file SQL is disabled; enable enable_file_sql to query local files");
+    return OB_NOT_SUPPORTED;
+  }
+  const ParseNode *function = parse_tree.children_[0];
+  if (function == nullptr || function->num_child_ != 2 || function->children_[0] == nullptr
+      || function->children_[1] == nullptr) { return OB_INVALID_ARGUMENT; }
+  auto text = [](const ParseNode *node) -> std::string {
+    if (node == nullptr) { return {}; }
+    if (node->type_ == T_COLUMN_REF && node->num_child_ == 3) { node = node->children_[2]; }
+    return node != nullptr && node->str_value_ != nullptr ? std::string(node->str_value_, node->str_len_) : std::string();
+  };
+  std::string name = text(function->children_[0]);
+  std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return std::tolower(c); });
+  FileSqlOptions options;
+  if (name == "read_csv") { options.format = "csv"; }
+  else if (name == "read_parquet") { options.format = "parquet"; }
+  else if (name == "glob") { options.format = "glob"; }
+  else if (name == "read_json" || name == "read_ndjson") { options.format = "json"; }
+  else { LOG_USER_ERROR(OB_NOT_SUPPORTED, "file table function"); return OB_NOT_SUPPORTED; }
+  const ParseNode *args = function->children_[1];
+  if (args->num_child_ < 1 || args->children_[0] == nullptr || args->children_[0]->type_ != T_VARCHAR) {
+    return OB_INVALID_ARGUMENT;
+  }
+  std::string path = text(args->children_[0]);
+  for (int64_t i = 1; i < args->num_child_; ++i) {
+    const ParseNode *argument = args->children_[i];
+    if (argument == nullptr || argument->type_ != T_OP_EQ || argument->num_child_ != 2) { return OB_ERR_PARSE_SQL; }
+    std::string key = text(argument->children_[0]);
+    std::transform(key.begin(), key.end(), key.begin(), [](unsigned char c) { return std::tolower(c); });
+    const ParseNode *value = argument->children_[1];
+    if (value == nullptr) { return OB_INVALID_ARGUMENT; }
+    std::string string_value = text(value);
+    if (key == "header") {
+      if (value->type_ != T_BOOL && value->type_ != T_INT) { return OB_INVALID_ARGUMENT; }
+      if (value->value_ != 0 && value->value_ != 1) { return OB_INVALID_ARGUMENT; }
+      options.header = value->value_;
+    } else if (key == "sample_size") {
+      int64_t sample = value->value_;
+      if (value->type_ == T_OP_NEG && value->num_child_ == 1 && value->children_[0] != nullptr) {
+        sample = -value->children_[0]->value_;
+      } else if (value->type_ != T_INT) { return OB_INVALID_ARGUMENT; }
+      if (sample != -1) { LOG_USER_ERROR(OB_NOT_SUPPORTED, "sample_size other than -1"); return OB_NOT_SUPPORTED; }
+    } else if (key == "format") {
+      if (options.format != "json" || string_value != "newline_delimited") { return OB_NOT_SUPPORTED; }
+    } else if (key == "nullstr" || key == "null") {
+      if (value->type_ != T_VARCHAR) { return OB_INVALID_ARGUMENT; }
+      options.null_text = string_value;
+    } else if (key == "delim" || key == "delimiter" || key == "sep" || key == "quote" || key == "escape") {
+      if (value->type_ != T_VARCHAR || string_value.size() != 1) { return OB_INVALID_ARGUMENT; }
+      if (key == "quote") { options.quote = string_value[0]; }
+      else if (key == "escape") { options.escape = string_value[0]; }
+      else { options.delimiter = string_value[0]; }
+    } else { return OB_INVALID_ARGUMENT; }
+  }
+  FileSqlReader reader;
+  ObString secure_path;
+  if (OB_FAIL(reader.open(path, options))) {
+  } else if (OB_FAIL(session_info_->get_secure_file_priv(secure_path))) {
+  } else if (OB_FAIL(ObResolverUtils::check_secure_path(secure_path, ObString(reader.path().size(), reader.path().data())))) {
+  } else if (OB_FAIL(reader.infer())) {
+    LOG_USER_ERROR(OB_INVALID_ARGUMENT, reader.error().c_str());
+  }
+  if (OB_FAIL(ret)) { return ret; }
+  std::string descriptor = reader.descriptor();
+  ObString stored_descriptor;
+  ObConstRawExpr *value_expr = nullptr;
+  if (OB_FAIL(ob_write_string(*allocator_, ObString(descriptor.size(), descriptor.data()), stored_descriptor))) {
+  } else if (OB_FAIL(ObRawExprUtils::build_const_string_expr(*params_.expr_factory_, ObVarcharType,
+               stored_descriptor, CS_TYPE_UTF8MB4_BIN, value_expr))) {
+  } else if (OB_ISNULL(table_item = get_stmt()->create_table_item(*allocator_))) {
+    ret = OB_ALLOCATE_MEMORY_FAILED;
+  } else {
+    ObString alias;
+    if (parse_tree.children_[1] != nullptr) {
+      std::string alias_text = text(parse_tree.children_[1]);
+      ret = ob_write_string(*allocator_, ObString(alias_text.size(), alias_text.data()), alias);
+    } else { ret = get_stmt()->generate_func_table_name(*allocator_, alias); }
+    table_item->table_name_ = table_item->alias_name_ = alias;
+    table_item->table_id_ = generate_table_id();
+    table_item->type_ = TableItem::FUNCTION_TABLE;
+    table_item->function_table_expr_ = value_expr;
+    if (OB_SUCC(ret)) { ret = value_expr->formalize(session_info_); }
+    if (OB_SUCC(ret)) { ret = get_stmt()->add_table_item(session_info_, table_item); }
+    for (size_t i = 0; OB_SUCC(ret) && i < reader.columns().size(); ++i) {
+      const FileSqlColumn &column = reader.columns()[i];
+      ObObjMeta meta; meta.set_type(column.type);
+      meta.set_collation_type(column.type == ObVarcharType ? CS_TYPE_UTF8MB4_BIN : CS_TYPE_BINARY);
+      meta.set_collation_level(column.type == ObVarcharType ? CS_LEVEL_IMPLICIT : CS_LEVEL_NUMERIC);
+      ObAccuracy accuracy = ObAccuracy::DDL_DEFAULT_ACCURACY[column.type];
+      if (column.type == ObVarcharType) { accuracy.set_length(16 * 1024 * 1024); }
+      ObString column_name; ColumnItem *item = nullptr;
+      if (OB_FAIL(ob_write_string(*allocator_, ObString(column.name.size(), column.name.data()), column_name))) {
+      } else if (OB_FAIL(resolve_function_table_column_item(*table_item, meta, accuracy, column_name,
+                                                         OB_APP_MIN_COLUMN_ID + i, item))) {
+      } else {
+        item->expr_->set_explicited_reference();
+        if (!column.nullable && column.type != ObNullType) { item->expr_->set_result_flag(NOT_NULL_FLAG); }
+      }
+    }
+  }
+  return ret;
+}
+
 int ObDMLResolver::resolve_function_table_item(const ParseNode &parse_tree,
                                                TableItem *&tbl_item)
 {
+  if (parse_tree.value_ == 1) { return resolve_file_table_item(parse_tree, tbl_item); }
   int ret = OB_SUCCESS;
   ObDMLStmt *stmt = get_stmt();
   ParseNode *alias_node = NULL;
@@ -7475,6 +7587,16 @@ int ObDMLResolver::resolve_function_table_column_item(const TableItem &table_ite
   CK (OB_LIKELY(table_item.is_function_table()));
   CK (OB_NOT_NULL(table_item.function_table_expr_));
   if (OB_SUCC(ret)) {
+    if (table_item.function_table_expr_->is_const_raw_expr()) {
+      const ObObj &value = static_cast<const ObConstRawExpr *>(table_item.function_table_expr_)->get_value();
+      if (value.is_varchar() && FileSqlReader::is_descriptor(std::string(value.get_string().ptr(), value.get_string().length()))) {
+        for (int64_t i = 0; OB_SUCC(ret) && i < get_stmt()->get_column_size(); ++i) {
+          const ColumnItem *column = get_stmt()->get_column_item(i);
+          if (column->table_id_ == table_item.table_id_) { ret = col_items.push_back(*column); }
+        }
+        return ret;
+      }
+    }
     if (table_item.function_table_expr_->get_result_type().is_ext()) {
       ret = resolve_function_table_column_item_udf(table_item, col_items);
     } else {

@@ -19,6 +19,9 @@
 #include "sql/engine/basic/ob_function_table_op.h"
 #include "sql/engine/ob_exec_context.h"
 #include "sql/engine/expr/ob_expr_lob_utils.h"
+#include "sql/resolver/ob_resolver_utils.h"
+#include "share/object/ob_obj_cast.h"
+#include <new>
 
 
 namespace oceanbase
@@ -36,6 +39,22 @@ int ObFunctionTableOp::inner_open()
   already_calc_ = false;
   if (OB_ISNULL(MY_SPEC.value_expr_)) {
     ret = OB_ERR_UNEXPECTED;
+  } else if (MY_SPEC.value_expr_->type_ == T_VARCHAR) {
+    ObDatum *value = nullptr;
+    bool enabled = false;
+    ObString secure_path;
+    if (OB_FAIL(MY_SPEC.value_expr_->eval(eval_ctx_, value))) {
+    } else if (OB_FAIL(ctx_.get_my_session()->get_sys_variable(share::SYS_VAR_ENABLE_FILE_SQL, enabled))) {
+    } else if (!enabled) { ret = OB_NOT_SUPPORTED;
+    } else if (OB_ISNULL(file_reader_ = new (std::nothrow) FileSqlReader())) { ret = OB_ALLOCATE_MEMORY_FAILED;
+    } else {
+      ObString descriptor = value->get_string();
+      if (OB_FAIL(file_reader_->open_descriptor(std::string(descriptor.ptr(), descriptor.length())))) {
+      } else if (OB_FAIL(ctx_.get_my_session()->get_secure_file_priv(secure_path))) {
+      } else if (OB_FAIL(ObResolverUtils::check_secure_path(secure_path,
+                     ObString(file_reader_->path().size(), file_reader_->path().data())))) {
+      } else { next_row_func_ = &ObFunctionTableOp::inner_get_next_row_file; }
+    }
   } else if (ObExtendType == MY_SPEC.value_expr_->datum_meta_.type_) {
     next_row_func_ = &ObFunctionTableOp::inner_get_next_row_udf;
   } else {
@@ -50,6 +69,7 @@ int ObFunctionTableOp::inner_rescan()
   if (OB_FAIL(ObOperator::inner_rescan())) {
   } else {
     node_idx_ = 0;
+    if (file_reader_ != nullptr) { ret = file_reader_->rewind(); }
     if (MY_SPEC.has_correlated_expr_) {
       row_count_ = 0;
       col_count_ = 0;
@@ -62,6 +82,9 @@ int ObFunctionTableOp::inner_rescan()
 
 int ObFunctionTableOp::inner_close()
 {
+  delete file_reader_; file_reader_ = nullptr;
+  std::vector<FileSqlCell>().swap(file_row_);
+  file_cast_allocator_.reset();
   int ret = OB_SUCCESS;
   node_idx_ = 0;
   row_count_ = 0;
@@ -72,6 +95,7 @@ int ObFunctionTableOp::inner_close()
 
 void ObFunctionTableOp::destroy()
 {
+  inner_close();
   ObOperator::destroy();
 }
 
@@ -102,6 +126,38 @@ int ObFunctionTableOp::get_current_result(ObObj &result)
 int ObFunctionTableOp::inner_get_next_row()
 {
   return (this->*next_row_func_)();
+}
+
+int ObFunctionTableOp::inner_get_next_row_file()
+{
+  int ret = OB_SUCCESS;
+  clear_evaluated_flag();
+  file_cast_allocator_.reuse();
+  if (OB_FAIL(ctx_.check_status())) {
+  } else if (OB_ISNULL(file_reader_)) { ret = OB_NOT_INIT;
+  } else if (OB_FAIL(file_reader_->next(file_row_))) {
+    if (ret != OB_ITER_END) { LOG_USER_ERROR(OB_INVALID_ARGUMENT, file_reader_->error().c_str()); }
+  } else if (file_row_.size() != MY_SPEC.column_exprs_.count()) { ret = OB_ERR_UNEXPECTED;
+  } else {
+    const ObDataTypeCastParams dtc_params = ObBasicSessionInfo::create_dtc_params(ctx_.get_my_session());
+    for (int64_t i = 0; OB_SUCC(ret) && i < MY_SPEC.column_exprs_.count(); ++i) {
+      ObExpr *expr = MY_SPEC.column_exprs_.at(i);
+      ObDatum &datum = expr->locate_datum_for_write(eval_ctx_);
+      const FileSqlCell &cell = file_row_[i];
+      if (cell.is_null) { datum.set_null(); }
+      else {
+        ObObj source, converted;
+        if (expr->datum_meta_.type_ != ObVarcharType && (cell.text == "true" || cell.text == "TRUE")) { source.set_int(1); }
+        else if (expr->datum_meta_.type_ != ObVarcharType && (cell.text == "false" || cell.text == "FALSE")) { source.set_int(0); }
+        else { source.set_varchar(ObString(cell.text.size(), cell.text.data())); source.set_collation_type(CS_TYPE_UTF8MB4_BIN); }
+        ObCastCtx cast_ctx(&file_cast_allocator_, &dtc_params, CM_NONE, CS_TYPE_UTF8MB4_BIN);
+        if (OB_FAIL(ObObjCaster::to_type(expr->datum_meta_.type_, CS_TYPE_UTF8MB4_BIN, cast_ctx, source, converted))) {
+        } else if (OB_FAIL(datum.from_obj(converted))) {}
+      }
+      if (OB_SUCC(ret)) { expr->set_evaluated_projected(eval_ctx_); }
+    }
+  }
+  return ret;
 }
 
 int ObFunctionTableOp::inner_get_next_row_udf()

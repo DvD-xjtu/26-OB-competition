@@ -18,6 +18,7 @@
 #define SRC_SQL_ENGINE_BASIC_OB_SELECT_INTO_OP_H_
 
 #include "sql/engine/ob_operator.h"
+#include "sql/engine/basic/file_sql_copy.h"
 #include "lib/file/ob_file.h"
 #include "sql/engine/cmd/ob_load_data_parser.h"
 #include "sql/engine/basic/ob_select_into_basic.h"
@@ -97,6 +98,12 @@ public:
 
 class ObSelectIntoOp : public ObOperator
 {
+  FileSqlCopyWriter *copy_writer_ = nullptr;
+  bool copy_done_ = false;
+  std::vector<char> copy_buffer_;
+  int init_file_copy();
+  int write_file_copy_row();
+  int execute_file_copy(bool batched, int64_t batch_size);
 public:
   ObSelectIntoOp(ObExecContext &exec_ctx, const ObOpSpec &spec, ObOpInput *input)
     : ObOperator(exec_ctx, spec, input),
