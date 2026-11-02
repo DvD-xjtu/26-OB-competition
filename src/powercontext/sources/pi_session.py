@@ -78,7 +78,7 @@ def _visible(record: dict) -> tuple[str, str] | None:
         message = record["message"]
         role = message.get("role")
         body = _text_blocks(message.get("content"))
-        if role == "toolResult":
+        if role == "toolResult" and body:
             body = f"[tool_result {message.get('toolName', '')} {message.get('toolCallId', '')}] {body}"
         elif role == "bashExecution":
             command, output = message.get("command", ""), message.get("output", "")
@@ -117,7 +117,7 @@ def parse_pi_session(value: PiSessionInput) -> tuple[PiEventInput, ...]:  # noqa
             or not event_id.strip()
             or event_id in nodes
             or "parentId" not in record
-            or (parent is not None and parent not in nodes)
+            or (parent is not None and (not isinstance(parent, str) or parent not in nodes))
         ):
             raise ValueError("invalid Pi event graph")  # noqa: TRY003
         _identity(session_id, event_id)
