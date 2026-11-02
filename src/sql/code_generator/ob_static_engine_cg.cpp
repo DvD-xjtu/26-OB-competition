@@ -18,6 +18,9 @@
 
 #include "config_bridge.h"
 #include "ob_static_engine_cg.h"
+#include "sql/resolver/dml/ob_update_stmt.h"
+#include "sql/resolver/dml/ob_insert_stmt.h"
+#include "sql/resolver/dml/ob_stmt_expr_visitor.h"
 #include "sql/optimizer/ob_log_group_by.h"
 #include "sql/optimizer/ob_log_sort.h"
 #include "sql/optimizer/ob_log_limit.h"
@@ -121,11 +124,43 @@ static int collect_ai_reads(const ObDMLStmt &stmt, share::schema::ObSchemaGetter
                             ObIArray<uint64_t> &tables, ObIArray<uint64_t> &columns)
 {
   int ret = OB_SUCCESS;
+  // Derive reads from query expressions rather than ColumnItem reference flags:
+  // DML adds physical maintenance columns to ColumnItem as well.
+  ObSEArray<ObRawExpr *, 16> read_exprs;
+  ObSEArray<ObRawExpr *, 16> read_columns;
+  ObStmtExprGetter visitor;
+  visitor.remove_all();
+  for (DmlStmtScope scope : {SCOPE_FROM, SCOPE_JOINED_TABLE, SCOPE_SEMI_INFO,
+       SCOPE_WHERE, SCOPE_GROUPBY, SCOPE_HAVING, SCOPE_SELECT, SCOPE_ORDERBY,
+       SCOPE_LIMIT, SCOPE_PIVOT, SCOPE_QUALIFY_FILTER}) { visitor.add_scope(scope); }
+  if (OB_FAIL(stmt.get_relation_exprs(read_exprs, visitor))) { return ret; }
+  if (stmt.is_update_stmt()) {
+    const auto &infos = static_cast<const ObUpdateStmt &>(stmt).get_update_table_info();
+    for (int64_t i = 0; OB_SUCC(ret) && i < infos.count(); ++i) {
+      if (infos.at(i) == nullptr) { ret = OB_ERR_UNEXPECTED; }
+      else for (const ObAssignment &assignment : infos.at(i)->assignments_) {
+        if (!assignment.is_implicit_ && OB_FAIL(read_exprs.push_back(assignment.expr_))) { break; }
+      }
+    }
+  } else if (stmt.is_insert_stmt()) {
+    const auto &assignments = static_cast<const ObInsertStmt &>(stmt).get_table_assignments();
+    for (int64_t i = 0; OB_SUCC(ret) && i < assignments.count(); ++i) {
+      const ObAssignment &assignment = assignments.at(i);
+      if (!assignment.is_implicit_ && OB_FAIL(read_exprs.push_back(assignment.expr_))) { break; }
+    }
+  }
+  if (OB_SUCC(ret)) { ret = ObRawExprUtils::extract_column_exprs(read_exprs, read_columns); }
+
   for (int64_t i = 0; OB_SUCC(ret) && i < stmt.get_column_items().count(); ++i) {
     const ColumnItem &item = stmt.get_column_items().at(i);
     const TableItem *table = stmt.get_table_item_by_id(item.table_id_);
     const share::schema::ObTableSchema *schema = nullptr;
-    if (item.expr_ == nullptr || !item.expr_->is_explicited_reference()
+    bool user_read = false;
+    for (int64_t j = 0; j < read_columns.count(); ++j) {
+      const auto *read = static_cast<const ObColumnRefRawExpr *>(read_columns.at(j));
+      user_read |= read->get_table_id() == item.table_id_ && read->get_column_id() == item.column_id_;
+    }
+    if (item.expr_ == nullptr || !user_read
         || table == nullptr || !table->is_basic_table()) {
     } else if (OB_FAIL(guard.get_table_schema(table->ref_id_, schema))) {
     } else if (schema != nullptr) {
