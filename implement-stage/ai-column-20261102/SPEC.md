@@ -1,0 +1,3 @@
+# AI column implementation
+Base commit: 34d4a551c3eb8c015fffd598cf1495f73633069b.
+Implement native MySQL asynchronous AI COLUMN declarations, persistent metadata and tasks, transactional invalidation/enqueue/delete, typed model results, grouped publication with stale-request checks, finite retries, predicate retry and strict reads. Reuse AI providers and ordinary DML/vector-index maintenance. Inputs are SQL and configured model endpoints; outputs are stored results and explicit task/row state. Existing official tests are immutable. Acceptance: the five ai_column mysqltest cases, plus unchanged ai_function and file_sql regressions. Platform scoring remains the user's action.

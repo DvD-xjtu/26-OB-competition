@@ -39,8 +39,9 @@ public:
   static int eval_uuid_short(const ObExpr &expr,
                       ObEvalCtx &ctx,
                       ObDatum &expr_datum);
-private:
+  // Shared by SQL UUID_SHORT and native asynchronous request scheduling.
   static uint64_t generate_uuid_short();
+private:
   DISALLOW_COPY_AND_ASSIGN(ObExprUuidShort) const;
 };
 

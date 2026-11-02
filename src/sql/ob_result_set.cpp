@@ -16,6 +16,9 @@
 
 #define USING_LOG_PREFIX SQL
 #include "ob_result_set.h"
+#include "share/ai_column/ai_column_definition.h"
+#include "query/session/ob_inner_sql_connection_access.h"
+#include "sql/session/ob_inner_sql_connection.h"
 #include "data_plane/transaction/ob_tx_desc_access.h"
 #include "share/rc/ob_server_runtime.h"
 #include "sql/resolver/dml/ob_del_upd_stmt.h"
@@ -161,6 +164,78 @@ OB_INLINE int ObResultSet::open_plan()
     }
   }
 
+  return ret;
+}
+
+static std::string ai_quote_identifier(const ObString &name)
+{
+  std::string quoted("`");
+  for (int64_t i = 0; i < name.length(); ++i) {
+    quoted += name.ptr()[i];
+    if (name.ptr()[i] == '`') { quoted += '`'; }
+  }
+  return quoted + "`";
+}
+
+static int check_ai_column_reads(ObExecContext &ctx, const ObPhysicalPlan &plan)
+{
+  int ret = OB_SUCCESS;
+  ObSQLSessionInfo *session = ctx.get_my_session();
+  bool strict = false;
+  const ObIArray<uint64_t> &tables = plan.get_ai_read_table_ids();
+  const ObIArray<uint64_t> &columns = plan.get_ai_read_column_ids();
+  if (session == nullptr || ctx.get_sql_ctx() == nullptr || ctx.get_sql_ctx()->schema_guard_ == nullptr) {
+    ret = OB_ERR_UNEXPECTED;
+  } else if (tables.count() != columns.count()) {
+    ret = OB_ERR_UNEXPECTED;
+  } else if (tables.empty()) {
+  } else if (OB_FAIL(session->get_sys_variable(SYS_VAR_AI_COLUMN_STRICT_READ, strict))) {
+  } else if (strict) {
+    oceanbase::share::schema::ObSchemaGetterGuard &guard = *ctx.get_sql_ctx()->schema_guard_;
+    for (int64_t i = 0; OB_SUCC(ret) && i < tables.count(); ++i) {
+      const ObTableSchema *table = nullptr;
+      const ObDatabaseSchema *database = nullptr;
+      const ObColumnSchemaV2 *column = nullptr, *state = nullptr;
+      oceanbase::share::AiColumnDefinition definition;
+      if (OB_FAIL(guard.get_table_schema(tables.at(i), table))) {
+      } else if (table == nullptr || (column = table->get_column_schema(columns.at(i))) == nullptr) {
+        ret = OB_SCHEMA_ERROR;
+      } else if (OB_FAIL(definition.parse(column->get_ai_column_info()))) {
+      } else if (OB_FAIL(guard.get_database_schema(table->get_database_id(), database))) {
+      } else if (database == nullptr || (state = table->get_column_schema(definition.state_column_id)) == nullptr) {
+        ret = OB_SCHEMA_ERROR;
+      } else {
+        std::string sql = "SELECT 1 AS incomplete FROM " + ai_quote_identifier(database->get_database_name_str())
+            + "." + ai_quote_identifier(table->get_table_name_str()) + " WHERE "
+            + ai_quote_identifier(state->get_column_name_str()) + " IS NULL OR "
+            + ai_quote_identifier(state->get_column_name_str()) + " <> 1 LIMIT 1";
+        sqlclient::ObISQLConnectionGuard connection;
+        ObIInnerSQLConnection *inner = nullptr;
+        if (OB_FAIL(oceanbase::query::ObInnerSQLConnectionAccess::create_connection_with_external_session(session, connection))) {
+        } else if ((inner = as_inner_sql_connection(connection.get_ptr())) == nullptr) {
+          ret = OB_ERR_UNEXPECTED;
+        } else {
+          ObSQLSessionInfo::StmtSavedValue saved_session;
+          ObIInnerSQLConnection::SavedValue saved_connection;
+          if (OB_FAIL(inner->begin_nested_session(saved_session, saved_connection, false))) {
+          } else {
+            {
+              ObMySQLProxy::MySQLResult result;
+              if (OB_FAIL(inner->execute_read(sql.c_str(), result))) {
+              } else if (result.get_result() == nullptr) {
+                ret = OB_ERR_UNEXPECTED;
+              } else if (OB_SUCCESS == (ret = result.get_result()->next())) {
+                ret = OB_AI_COLUMN_NOT_READY;
+                LOG_USER_ERROR(OB_AI_COLUMN_NOT_READY, tables.at(i), columns.at(i));
+              } else if (ret == OB_ITER_END) { ret = OB_SUCCESS; }
+            }
+            int restore_ret = inner->end_nested_session(saved_session, saved_connection);
+            if (ret == OB_SUCCESS) { ret = restore_ret; }
+          }
+        }
+      }
+    }
+  }
   return ret;
 }
 
@@ -462,6 +537,7 @@ OB_INLINE int ObResultSet::do_open_plan(ObExecContext &ctx)
 
   if (OB_FAIL(ret)) {
   } else if (OB_FAIL(start_stmt())) {
+  } else if (OB_FAIL(check_ai_column_reads(ctx, *physical_plan_))) {
   } else {
     /* Set exec_result_ to the executor's runtime environment for returning data */
     /* execute plan,

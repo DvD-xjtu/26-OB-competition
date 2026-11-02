@@ -36,6 +36,10 @@ public:
   ObAlterTableStmt();
   virtual ~ObAlterTableStmt();
   int add_column(const share::schema::AlterColumnSchema &column_schema);
+  const common::ObString &get_retry_ai_column_name() const { return retry_ai_column_name_; }
+  const common::ObString &get_retry_ai_column_predicate() const { return retry_ai_column_predicate_; }
+  void set_retry_ai_column(const common::ObString &name, const common::ObString &predicate)
+  { retry_ai_column_name_ = name; retry_ai_column_predicate_ = predicate; }
   int add_index_arg(obcall::ObIndexArg *index_arg);
   int check_drop_fk_arg_exist(obcall::ObDropForeignKeyArg *drop_fk_arg, bool &has_same_fk_arg);
   obcall::ObAlterTableArg& get_alter_table_arg(){ return alter_table_arg_; }
@@ -105,6 +109,8 @@ public:
   }
   void set_lock_priority();
 private:
+  common::ObString retry_ai_column_name_;
+  common::ObString retry_ai_column_predicate_;
   obcall::ObAlterTableArg alter_table_arg_;
   bool is_comment_table_;
   bool is_alter_system_;

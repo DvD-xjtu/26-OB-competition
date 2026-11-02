@@ -34,6 +34,8 @@ namespace sql
 
 ObPhysicalPlan::ObPhysicalPlan(MemoryContext &mem_context /* = CURRENT_CONTEXT */)
   : ObPlanCacheObject(ObLibCacheNameSpace::NS_CRSR, mem_context),
+    ai_read_table_ids_(allocator_),
+    ai_read_column_ids_(allocator_),
     phy_hint_(),
     root_op_spec_(NULL),
     param_count_(0),
@@ -123,6 +125,8 @@ ObPhysicalPlan::~ObPhysicalPlan()
 void ObPhysicalPlan::reset()
 {
   ObPlanCacheObject::reset();
+  ai_read_table_ids_.reset();
+  ai_read_column_ids_.reset();
   phy_hint_.reset();
   root_op_spec_ = NULL;
   param_count_ = 0;
@@ -649,7 +653,8 @@ OB_SERIALIZE_MEMBER(ObPhysicalPlan,
                     need_switch_to_table_lock_worker_,
                     data_complement_gen_doc_id_,
                     px_parallel_rule_,
-                    px_worker_share_plan_enabled_);
+                    px_worker_share_plan_enabled_,
+                    ai_read_table_ids_, ai_read_column_ids_);
 
 int ObPhysicalPlan::set_table_locations(const ObTablePartitionInfoArray &infos,
                                         ObSchemaGetterGuard &schema_guard)
