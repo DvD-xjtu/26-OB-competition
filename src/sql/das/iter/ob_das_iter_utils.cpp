@@ -1493,7 +1493,9 @@ int ObDASIterUtils::create_text_retrieval_sub_tree(
     ret = OB_ERR_UNEXPECTED;
   } else {
     merge_iter_param.function_lookup_mode_ = is_func_lookup ? 1 : 0;
-    if (ir_scan_ctdef->has_pushdown_topk() && !has_duplicate_boolean_tokens) {
+    if (!ir_scan_ctdef->need_calc_relevance()) {
+      merge_iter_param.daat_mode_ = 1;
+    } else if (ir_scan_ctdef->has_pushdown_topk() && !has_duplicate_boolean_tokens) {
       merge_iter_param.topk_mode_ = 1;
       merge_iter_param.daat_mode_ = 1;
     } else if (merge_iter_param.query_tokens_.count() > OB_MAX_TEXT_RETRIEVAL_TOKEN_CNT

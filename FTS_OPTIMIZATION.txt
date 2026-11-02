@@ -1,0 +1,29 @@
+FTS optimization: first measured iteration
+
+Changes
+- IK processors receive the already decoded character and category directly.
+- Sorted non-overlapping IK chains use an inline array instead of a new hash table per segment.
+- Already-lowercase ASCII tokens avoid the English normalizer's case-fold allocation.
+- Natural-language scalar aggregates with a direct boolean MATCH predicate can use membership-only retrieval when all expression uses are boolean. Ranked/limited queries, numeric score uses, numeric thresholds, OR-only/NOT filters, boolean search, ES search and boosted search retain scoring.
+- Membership-only DaaT initializes only required state, allocates its skip vector, avoids BM25 statistics, and emits a positive membership value. No persisted search result cache or benchmark-specific constants are used.
+
+Evidence and correctness
+EXPLAIN before showed calc_relevance=true even for COUNT(*) with only boolean MATCH. After shows false for eligible aggregates; ranked queries retain true.
+216 IK smart/max_word document cases match the original binary, including token frequencies and long segmented inputs. Extended corpus: 324 IK/BENG cases passed. Official tokenize_function mysqltest passed unchanged. 234 aggregate/score/ranking/threshold/update/delete/transaction queries matched the scoring reference. Regression scripts are in unittest/storage/fts and use separate local test databases.
+
+Local measurements (same WSL instance, release build, 4 GB server memory)
+Unmodified tools/benchmark/fts_large_bench.sh; ROWS=20000 BATCH=500 ROUNDS=3000 QUERY_ROUNDS=200 SAMPLES=3 WARMUP=30 SKIP_LOAD=0.
+Metric                         Before      After
+build_ik_all_sec                9.412       9.302
+build_ik_content_sec            7.265       7.263
+build_beng_en_sec               3.951       3.951
+tokenize_ik_avg_ms              0.3365      0.3362
+tokenize_beng_avg_ms            0.2698      0.2690
+query_cn_avg_ms                 2.4079      2.1242
+query_beng_avg_ms               3.3890      3.0437
+query_mixed_avg_ms              2.6184      2.3300
+query_limit_avg_ms              3.0710      3.3553
+select1_avg_ms                  0.2362      0.2339
+All hit counts unchanged: 8001, 11000, 7332, 20.
+
+The three membership queries improved about 10-12%. Build/tokenization changes are within noise locally. LIMIT is not optimized and its measured time regressed 9.3% (after-run stdev 0.1831 ms versus 0.0055 ms before); this remains a limitation. Local timings are not official competition scores. CI results, not the much slower local SQL-loop baseline, determine the final score.

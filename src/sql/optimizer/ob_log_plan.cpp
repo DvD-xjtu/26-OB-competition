@@ -12167,6 +12167,27 @@ int ObLogPlan::prepare_text_retrieval_merge(const ObIArray<ObRawExpr *> &merge_m
   return ret;
 }
 
+// A boolean MATCH use only needs membership; all numeric uses retain scoring.
+static int match_requires_numeric_score(ObRawExpr *expr, ObRawExpr *match, bool &required)
+{
+  int ret = OB_SUCCESS;
+  required = false;
+  if (OB_ISNULL(expr) || OB_ISNULL(match)) {
+    ret = OB_ERR_UNEXPECTED;
+  } else if (expr == match) {
+    required = true;
+  } else if (expr->get_expr_type() == T_OP_BOOL && expr->get_param_count() == 1
+             && expr->get_param_expr(0) == match) {
+    // Membership is sufficient. Comparisons to numeric thresholds are not
+    // optimized here, so cached plans cannot lose parameter dependencies.
+  } else {
+    for (int64_t i = 0; OB_SUCC(ret) && !required && i < expr->get_param_count(); ++i) {
+      ret = SMART_CALL(match_requires_numeric_score(expr->get_param_expr(i), match, required));
+    }
+  }
+  return ret;
+}
+
 int ObLogPlan::prepare_text_retrieval_info(const uint64_t ref_table_id,
                                            const uint64_t index_table_id,
                                            ObMatchFunRawExpr *match_against,
@@ -12251,18 +12272,35 @@ int ObLogPlan::prepare_text_retrieval_info(const uint64_t ref_table_id,
     }
   }
   if (OB_SUCC(ret)) {
-    /*
-    if (OB_FAIL(ObTransformUtils::check_need_calc_match_score(get_optimizer_context().get_exec_ctx(),
-                                                              get_stmt(),
-                                                              match_against,
-                                                              need_calc_relevance,
-                                                              constraints))) {
-      LOG_WARN("failed to check need calc relevance", K(ret));
-    } else if (!need_calc_relevance &&
-               OB_FAIL(append_array_no_dup(get_optimizer_context().get_query_ctx()->all_expr_constraints_, constraints))) {
-      LOG_WARN("failed to append array no dup", K(ret));
+    bool has_direct_match_filter = false;
+    for (int64_t i = 0; i < get_stmt()->get_condition_exprs().count(); ++i) {
+      ObRawExpr *condition = get_stmt()->get_condition_exprs().at(i);
+      if (condition != nullptr && condition->get_expr_type() == T_OP_BOOL
+          && condition->get_param_count() == 1 && condition->get_param_expr(0) == match_against) {
+        has_direct_match_filter = true;
+      }
     }
-    */
+    // Scalar aggregates do not observe the implicit relevance ordering. Keep
+    // scoring for ranked queries, boolean/boosted search, and any expression
+    // that reads the numeric score (including parameterized comparisons).
+    if (has_direct_match_filter && get_stmt()->is_select_stmt()
+        && static_cast<const ObSelectStmt *>(get_stmt())->is_scala_group_by()
+        && !get_stmt()->has_limit() && !get_stmt()->has_order_by()
+        && match_against->get_mode_flag() == NATURAL_LANGUAGE_MODE
+        && !match_against->is_es_match()
+        && match_against->get_columns_boosts().empty()
+        && match_against->get_param_text_expr() == nullptr) {
+      ObSEArray<ObRawExpr *, 16> expressions;
+      if (OB_FAIL(get_stmt()->get_relation_exprs(expressions))) {
+      } else {
+        need_calc_relevance = false;
+        for (int64_t i = 0; OB_SUCC(ret) && !need_calc_relevance && i < expressions.count(); ++i) {
+          if (OB_FAIL(match_requires_numeric_score(
+                  expressions.at(i), match_against, need_calc_relevance))) {
+          }
+        }
+      }
+    }
     tr_info.match_expr_ = match_against;
     tr_info.inv_idx_tid_ = inv_idx_tid;
     tr_info.fwd_idx_tid_ = fwd_idx_tid;

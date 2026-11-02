@@ -126,7 +126,7 @@ int ObIKArbitrator::output_result(TokenizeContext &ctx)
                                                          type))) {
     } else if (ObFTCharUtil::CharType::USELESS == type) {
       current += char_len; // skip useless char
-    } else if (OB_FAIL(chains_.get_refactored(current, chain)) && OB_HASH_NOT_EXIST != ret) {
+    } else if (OB_FAIL(find_chain(current, chain)) && OB_HASH_NOT_EXIST != ret) {
     } else if (OB_HASH_NOT_EXIST == ret) {
       ret = OB_SUCCESS;
       if (!keep_single()) {
@@ -302,10 +302,7 @@ int ObIKArbitrator::prepare(TokenizeContext &ctx)
 {
   int ret = OB_SUCCESS;
 
-  int cal_bucket_num = MAX(ctx.fulltext_len() / 100, 10);
-  cal_bucket_num = MIN(cal_bucket_num, 100);
-  if (OB_FAIL(chains_.create(cal_bucket_num, ObMemAttr("IK ARBITRATE")))) {
-  }
+  chains_.reuse();
   return ret;
 }
 
@@ -318,14 +315,33 @@ int ObIKArbitrator::add_chain(ObIKTokenChain *chain)
     ret = OB_INVALID_ARGUMENT;
   } else if (chain->list().is_empty()) {
     // no need to add empty chain
-  } else if (OB_FAIL(chains_.set_refactored(chain->min_offset(), chain))) {
+  } else if (chains_.count() > 0 && chains_.at(chains_.count() - 1)->min_offset() >= chain->min_offset()) {
+    ret = OB_ERR_UNEXPECTED;
+  } else if (OB_FAIL(chains_.push_back(chain))) {
   }
   return ret;
 }
 
+// Non-overlapping chains are emitted in increasing byte-offset order. A small
+// inline array avoids allocating a hash table for every document/segment.
+int ObIKArbitrator::find_chain(int64_t offset, ObIKTokenChain *&chain) const
+{
+  int64_t first = 0, last = chains_.count();
+  while (first < last) {
+    const int64_t mid = first + (last - first) / 2;
+    if (chains_.at(mid)->min_offset() < offset) { first = mid + 1; }
+    else { last = mid; }
+  }
+  if (first == chains_.count() || chains_.at(first)->min_offset() != offset) {
+    return OB_HASH_NOT_EXIST;
+  }
+  chain = chains_.at(first);
+  return OB_SUCCESS;
+}
+
 ObIKArbitrator::~ObIKArbitrator()
 {
-  chains_.destroy();
+  chains_.reset();
   alloc_.reset();
 }
 } // namespace storage
