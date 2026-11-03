@@ -32,3 +32,5 @@ python scripts/check_submission.py --repo /path/to/repo --base BASE_COMMIT --can
 提供题目到分支及 commit 的映射、必要提交文件、已验证结果与阻塞项。用户手动提测时仅提供填写步骤，不自行提交。平台判分前不宣称满分；根据实际失败记录定位问题，不修改测试预期或编造工具使用记录。
 
 示例请求：“检查这个仓库的 AMD 提测版本是否基于规定冻结提交，并列出尚缺的测试证据。”
+
+<!-- OB-S:nD21xcD7MZlDy22CqMa3cw -->
