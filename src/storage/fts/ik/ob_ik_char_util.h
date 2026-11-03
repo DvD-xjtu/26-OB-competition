@@ -47,6 +47,39 @@ public:
     SURROGATE_LOW = 6,
   };
 
+  // Read and classify one codepoint. Failed UTF-8 decoding uses the original
+  // validation path so malformed-input error behavior stays consistent.
+  static int read_first_char(ObCollationType coll_type, const char *input,
+                             int64_t remaining, int64_t &char_len, CharType &type)
+  {
+    if (input != nullptr && remaining > 0
+        && (coll_type == CS_TYPE_UTF8MB4_BIN || coll_type == CS_TYPE_UTF8MB4_GENERAL_CI)) {
+      ob_wc_t unicode = 0;
+      const auto *begin = reinterpret_cast<const unsigned char *>(input);
+      const int decoded = common::ob_charset_decode_unicode<CHARSET_UTF8MB4>(
+          begin, begin + remaining, unicode);
+      if (decoded > 0) {
+        char_len = decoded;
+        type = CharType::USELESS;
+        if (ObUnicodeBlockUtils::is_alpha(unicode)) {
+          type = CharType::ENGLISH_LETTER;
+        } else if (ObUnicodeBlockUtils::is_arabic(unicode)) {
+          type = CharType::ARABIC_LETTER;
+        } else if (ObUnicodeBlockUtils::is_chinese(unicode)) {
+          type = CharType::CHINESE;
+        } else if (ObUnicodeBlockUtils::is_other_cjk(unicode)) {
+          type = CharType::OTHER_CJK;
+        }
+        return OB_SUCCESS;
+      }
+    }
+    int ret = OB_SUCCESS;
+    if (OB_FAIL(ObCharset::first_valid_char(coll_type, input, remaining, char_len))) {
+    } else if (OB_FAIL(classify_first_char(coll_type, input, char_len, type))) {
+    }
+    return ret;
+  }
+
   static int classify_first_char(ObCollationType coll_type,
                                  const char *input,
                                  const uint8_t char_len,

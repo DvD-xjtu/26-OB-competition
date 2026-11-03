@@ -17,6 +17,7 @@ ascii_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !@
 documents += [''.join(rng.choices(ascii_chars, k=rng.randrange(1, 2000))) for _ in range(100)]
 documents += ['hello\x00WORLD trailing', 'A' * 9000, 'UPPER lower MiXeD', '\t\r\n...---___']
 documents += [('中文数据库 OceanBase 123 公斤。' * 1500), ('abcXYZ +test ' * 2000)]
+documents += ['\x00 A中é😀𠀀 １２３', ''.join(chr(c) for c in [0x7f,0x80,0x7ff,0x800,0xd7ff,0xe000,0xffff,0x10000,0x10ffff]), '数据库 ABC 123 😀。' * 1200]
 connection = pymysql.connect(unix_socket=os.environ['FTS_TEST_SOCKET'], user='root', charset='utf8mb4')
 results = []
 with connection.cursor() as cursor:
