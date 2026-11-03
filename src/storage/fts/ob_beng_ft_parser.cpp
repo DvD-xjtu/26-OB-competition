@@ -16,6 +16,8 @@
 
 #define USING_LOG_PREFIX STORAGE_FTS
 
+#include <stdint.h>
+#include <string.h>
 #include "storage/fts/ob_beng_ft_parser.h"
 #include "data_plane/fts/ob_fts_struct.h"
 
@@ -25,6 +27,28 @@ namespace oceanbase
 {
 namespace storage
 {
+
+// Load unaligned words without aliasing the input. The high bit of any
+// non-ASCII byte is set; subtracting one per lane also exposes zero bytes.
+static bool contains_only_nonzero_ascii(const char *data, int64_t len)
+{
+  constexpr uint64_t ones = UINT64_C(0x0101010101010101);
+  constexpr uint64_t high = UINT64_C(0x8080808080808080);
+  while (len >= 8) {
+    uint64_t bytes;
+    memcpy(&bytes, data, sizeof(bytes));
+    if ((bytes | ((bytes - ones) & ~bytes)) & high) {
+      return false;
+    }
+    data += 8;
+    len -= 8;
+  }
+  while (len-- > 0) {
+    const unsigned char byte = static_cast<unsigned char>(*data++);
+    if (byte == 0 || byte >= 128) { return false; }
+  }
+  return true;
+}
 
 int ObBEngFTParser::get_next_token(
     const char *&word,
@@ -97,13 +121,10 @@ int ObBEngFTParser::init(ObFTParserParam *param)
     // For ASCII under these UTF-8 collations, the original whitespace/control/
     // punctuation splitting plus alphanumeric trimming is exactly an alnum scan.
     // Non-ASCII and other collations retain the general charset-aware pipeline.
-    bool ascii = param->ft_length_ <= 1024 * 1024
+    const bool ascii = param->ft_length_ <= 1024 * 1024
         && (param->cs_->number == CS_TYPE_UTF8MB4_BIN
-            || param->cs_->number == CS_TYPE_UTF8MB4_GENERAL_CI);
-    for (int64_t i = 0; ascii && i < param->ft_length_; ++i) {
-      const unsigned char ch = static_cast<unsigned char>(param->fulltext_[i]);
-      ascii = ch > 0 && ch < 0x80;
-    }
+            || param->cs_->number == CS_TYPE_UTF8MB4_GENERAL_CI)
+        && contains_only_nonzero_ascii(param->fulltext_, param->ft_length_);
     if (ascii) {
       // The caller's arena owns returned words beyond this iterator's lifetime,
       // just as it owns the token copies produced by the general pipeline.

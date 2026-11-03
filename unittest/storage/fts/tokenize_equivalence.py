@@ -17,6 +17,8 @@ ascii_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !@
 documents += [''.join(rng.choices(ascii_chars, k=rng.randrange(1, 2000))) for _ in range(100)]
 documents += ['hello\x00WORLD trailing', 'A' * 9000, 'UPPER lower MiXeD', '\t\r\n...---___']
 documents += [('中文数据库 OceanBase 123 公斤。' * 1500), ('abcXYZ +test ' * 2000)]
+# Exercise the packed ASCII predicate at word boundaries and in its tail.
+documents += ['A' * n + marker + 'tail' for n in range(17) for marker in ('\x00', 'é', '中')]
 connection = pymysql.connect(unix_socket=os.environ['FTS_TEST_SOCKET'], user='root', charset='utf8mb4')
 results = []
 with connection.cursor() as cursor:
