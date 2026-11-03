@@ -25,3 +25,6 @@ The full native build and database mysqltests have NOT been reported as passing.
 Official regression entry points: `tools/deploy/mysql_test/test_suite/ai_column/t/{ai_column_ddl,ai_column_t1_dml,ai_column_worker,ai_column_vector_index,ai_column_retry_strict}.test`. Official test inputs, expected results, benchmark inputs and scoring files are unchanged.
 
 Known supported-expression boundary: AI input/config expressions cannot reference another AI column, subquery, parameter or qualified column name. Unsupported definitions fail during DDL rather than producing an unusable task.
+
+## 2026-11-03 update
+Native full build and all five original AI COLUMN mysqltest cases now pass on a fresh local instance after four runtime fixes. See [validation and remaining limits](VALIDATION_20261103.md). The earlier incomplete-build paragraph describes the previous submission, not this new fix. Platform results remain unverified.

@@ -3373,7 +3373,13 @@ bool ObSQLUtils::is_iter_uncommitted_row(ObExecContext *cur_ctx)
 
 bool ObSQLUtils::is_nested_sql(ObExecContext *cur_ctx)
 {
-  return is_pl_nested_sql(cur_ctx) || is_fk_nested_sql(cur_ctx) || is_online_stat_gathering_nested_sql(cur_ctx);
+  // Native AI column snapshot/task SQL uses the caller's explicit nested
+  // session too. It must share statement and transaction lifecycle with the
+  // caller, rather than ending the outer statement while nested_count > 0.
+  const bool native_nested = cur_ctx != nullptr && cur_ctx->get_parent_ctx() != nullptr
+      && cur_ctx->get_my_session() != nullptr && cur_ctx->get_my_session()->get_nested_count() > 0;
+  return native_nested || is_pl_nested_sql(cur_ctx) || is_fk_nested_sql(cur_ctx)
+      || is_online_stat_gathering_nested_sql(cur_ctx);
 }
 
 //bind current execute context to my session,

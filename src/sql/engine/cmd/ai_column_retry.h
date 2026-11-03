@@ -5,6 +5,7 @@
 #include "share/ai_column/ai_column_definition.h"
 #include "query/session/ob_inner_sql_connection_access.h"
 #include "share/schema/ob_schema_getter_guard.h"
+#include "share/schema/ob_multi_version_schema_service.h"
 #include "sql/engine/ob_exec_context.h"
 #include "sql/engine/cmd/ai_column_retry_predicate.h"
 #include "sql/engine/ob_physical_plan_ctx.h"
@@ -136,11 +137,11 @@ public:
     const Column *state = nullptr, *request = nullptr, *spec = nullptr;
     const share::schema::ObDatabaseSchema *db = nullptr;
     Definition def;
-    auto *sql_ctx = ctx.get_sql_ctx();
-    if (sql_ctx == nullptr || sql_ctx->schema_guard_ == nullptr
-        || ctx.get_my_session() == nullptr || ctx.get_sql_proxy() == nullptr) {
+    share::schema::ObSchemaGetterGuard guard;
+    if (GCTX.schema_service_ == nullptr || ctx.get_my_session() == nullptr || ctx.get_sql_proxy() == nullptr) {
       ret = common::OB_ERR_UNEXPECTED;
-    } else if (OB_FAIL(sql_ctx->schema_guard_->get_table_schema(
+    } else if (OB_FAIL(GCTX.schema_service_->get_runtime_schema_guard(guard))) {
+    } else if (OB_FAIL(guard.get_table_schema(
                          stmt.get_alter_table_schema().get_table_id(), table))) {
     } else if (table == nullptr
                || (column = table->get_column_schema(stmt.get_retry_ai_column_name())) == nullptr
@@ -150,7 +151,7 @@ public:
                || (request = table->get_column_schema(def.request_column_id)) == nullptr
                || (spec = table->get_column_schema(def.result_spec_column_id)) == nullptr) {
       ret = common::OB_SCHEMA_ERROR;
-    } else if (OB_FAIL(sql_ctx->schema_guard_->get_database_schema(table->get_database_id(), db))) {
+    } else if (OB_FAIL(guard.get_database_schema(table->get_database_id(), db))) {
     } else if (db == nullptr) { ret = common::OB_SCHEMA_ERROR; }
     if (OB_SUCC(ret)) {
       const std::string qualified = ident(db->get_database_name_str()) + '.' + ident(table->get_table_name_str());
@@ -165,6 +166,7 @@ public:
       ObSQLMode old_mode = 0;
       bool restore_environment = false;
       if (OB_FAIL(tx.start(ctx.get_sql_proxy(), true))) {
+        LOG_INFO("AI retry transaction start failed", K(ret));
       } else if (OB_ISNULL(inner = query::ObInnerSQLConnectionAccess::get_session(tx.get_connection()))) {
         ret = common::OB_ERR_UNEXPECTED;
       } else if (OB_FAIL(old_tz.deep_copy(inner->get_tz_info_wrap()))) {
@@ -174,7 +176,9 @@ public:
         if (OB_FAIL(tx.get_connection()->set_session_variable(common::ObString::make_string("sql_mode"),
                           static_cast<int64_t>(ctx.get_my_session()->get_sql_mode())))) {
         } else if (OB_FAIL(tx.get_connection()->set_tz_info_wrap(ctx.get_my_session()->get_tz_info_wrap()))) {
-        } else { ret = collect(tx, ctx, *table, def, qualified, where, snapshots); }
+        } else { ret = collect(tx, ctx, *table, def, qualified, where, snapshots);
+          if (OB_FAIL(ret)) { LOG_INFO("AI retry collect failed", K(ret)); }
+        }
       }
       for (size_t i = 0; OB_SUCC(ret) && i < snapshots.size(); ++i) {
         const Snapshot &row = snapshots[i];
@@ -195,6 +199,7 @@ public:
             + ident(spec->get_column_name_str()) + '=' + literal(snapshot) + " WHERE " + row.key;
         int64_t affected = 0;
         if (OB_FAIL(tx.write(update.c_str(), affected))) {
+          LOG_INFO("AI retry update failed", K(ret));
         } else if (affected != 1) { ret = common::OB_ERR_UNEXPECTED; }
         const std::string insert = "INSERT INTO oceanbase.__all_ai_column_task "
             "(table_id,column_id,rowkey_predicate,request_id,definition_version,model_name,input_text,"
@@ -212,6 +217,7 @@ public:
             "lease_expires=NULL,result=NULL,last_error=0,system_prompt=VALUES(system_prompt),config=VALUES(config)";
         if (OB_SUCC(ret)) { ret = tx.write(insert.c_str(), affected); }
       }
+      if (OB_FAIL(ret)) { LOG_INFO("AI retry prior restore failed", K(ret)); }
       if (restore_environment) {
         const int mode_ret = tx.get_connection()->set_session_variable(
             common::ObString::make_string("sql_mode"), static_cast<int64_t>(old_mode));
