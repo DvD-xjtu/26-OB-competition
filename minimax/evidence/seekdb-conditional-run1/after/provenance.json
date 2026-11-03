@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/DvD-xjtu/26-OB-competition",
+  "commit": "9f45ebb09662f5a9e315dcb78af354fbdbc25909",
+  "directory": "tools/module_check",
+  "note": "Original implementation and regression tests copied byte-for-byte; new requirements and target tests are separately identified."
+}

@@ -1,0 +1,13 @@
+{
+  "real_model": "MiniMax-M3.1-Flash",
+  "before_failures": 3,
+  "after_tests_passed": 17,
+  "test_hash_unchanged": true,
+  "restart_state_verified": true,
+  "updated_implementation_verified": true,
+  "hash_encoding": "DB digest uses UTF-8 normalized text; code_sha256 uses exact file bytes",
+  "spec_reimport": {
+    "updated_digest": "cbc058ad42c596ae9c1b9f3aee702dd719cbd91bf6321276abf249eea195f798",
+    "restored_digest": "bc991a256fb89dfd6d2811fd4d66dd6e39c3a0f491f0b0b04e8abf1b8ceb0477"
+  }
+}

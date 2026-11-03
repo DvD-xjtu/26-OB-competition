@@ -1,0 +1,16 @@
+{
+  "command": [
+    "C:\\Users\\ZZZ\\Desktop\\数据库\\.pcvenv\\Scripts\\python.exe",
+    "-B",
+    "-m",
+    "unittest",
+    "-v",
+    "unittest_module_check_test",
+    "test_conditional"
+  ],
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": "test_commented_and_literal_if_zero_includes_are_ignored (unittest_module_check_test.UnitTestModuleCheckTest.test_commented_and_literal_if_zero_includes_are_ignored) ... ok\ntest_commented_performance_case_is_ignored (unittest_module_check_test.UnitTestModuleCheckTest.test_commented_performance_case_is_ignored) ... ok\ntest_easy_is_owned_by_oblib (unittest_module_check_test.UnitTestModuleCheckTest.test_easy_is_owned_by_oblib) ... ok\ntest_legacy_gtest_main_is_rejected (unittest_module_check_test.UnitTestModuleCheckTest.test_legacy_gtest_main_is_rejected) ... ok\ntest_own_module_and_foundation_includes_are_allowed (unittest_module_check_test.UnitTestModuleCheckTest.test_own_module_and_foundation_includes_are_allowed) ... ok\ntest_peer_build_dependency_is_rejected_but_runtime_is_allowed (unittest_module_check_test.UnitTestModuleCheckTest.test_peer_build_dependency_is_rejected_but_runtime_is_allowed) ... ok\ntest_peer_module_include_is_rejected (unittest_module_check_test.UnitTestModuleCheckTest.test_peer_module_include_is_rejected) ... ok\ntest_performance_case_inside_correctness_file_is_rejected (unittest_module_check_test.UnitTestModuleCheckTest.test_performance_case_inside_correctness_file_is_rejected) ... ok\ntest_repository_build_file_is_infrastructure (unittest_module_check_test.UnitTestModuleCheckTest.test_repository_build_file_is_infrastructure) ... ok\ntest_repository_test_main_is_infrastructure (unittest_module_check_test.UnitTestModuleCheckTest.test_repository_test_main_is_infrastructure) ... ok\ntest_standalone_main_without_gtest_case_is_rejected (unittest_module_check_test.UnitTestModuleCheckTest.test_standalone_main_without_gtest_case_is_rejected) ... ok\ntest_unowned_and_performance_programs_are_rejected (unittest_module_check_test.UnitTestModuleCheckTest.test_unowned_and_performance_programs_are_rejected) ... ok\ntest_false_elif (test_conditional.ConditionalIncludes.test_false_elif) ... ok\ntest_nested_disabled (test_conditional.ConditionalIncludes.test_nested_disabled) ... ok\ntest_repeated_literal_elif (test_conditional.ConditionalIncludes.test_repeated_literal_elif) ... ok\ntest_taken_elif (test_conditional.ConditionalIncludes.test_taken_elif) ... ok\ntest_unknown_remains_conservative (test_conditional.ConditionalIncludes.test_unknown_remains_conservative) ... ok\n\n----------------------------------------------------------------------\nRan 17 tests in 0.196s\n\nOK\n",
+  "code_sha256": "43b312c4882bd8a2c13265322185d5c653e1838e07647e1be027fd3c788af2bb",
+  "test_sha256": "a3b2ceb2a11a0b69b5e08a381a5340968146b8378d93062d9eeb09bdb28eeccf"
+}

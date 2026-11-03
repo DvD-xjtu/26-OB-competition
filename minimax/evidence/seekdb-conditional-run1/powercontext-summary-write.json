@@ -1,0 +1,24 @@
+{
+  "memory": {
+    "family": "memory",
+    "artifact_id": "memory",
+    "revision": 2
+  },
+  "entry": {
+    "citation": {
+      "memory_ref": {
+        "family": "memory",
+        "artifact_id": "memory",
+        "revision": 2
+      },
+      "entry_id": "mem_ent_7e3b3bbce30d4758aab41658271f76c8",
+      "entry_version_id": "mem_ver_adc0d31b3aa741d39c7c7363f0898634"
+    },
+    "version": 1,
+    "kind": "fact",
+    "text": "SDD task progress validation {\"task\": \"seekdb-conditional-v1\", \"completed\": [\"retrieved sources\", \"MiniMax edited unittest_module_check.py\"], \"pending\": [], \"validation\": {\"exit_code\": 0, \"code_sha256\": \"43b312c4882bd8a2c13265322185d5c653e1838e07647e1be027fd3c788af2bb\", \"test_sha256\": \"a3b2ceb2a11a0b69b5e08a381a5340968146b8378d93062d9eeb09bdb28eeccf\"}}",
+    "state": "active",
+    "source_refs": [],
+    "artifact_refs": []
+  }
+}

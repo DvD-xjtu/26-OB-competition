@@ -1,0 +1,56 @@
+--- before/unittest_module_check.py
++++ after/unittest_module_check.py
+@@ -28,7 +28,14 @@
+     r'^[ \t]*#[ \t]*include[ \t]*(?:"([^"]+)"|<([^>]+)>)'
+ )
+ IF_ZERO_PATTERN = re.compile(r"^[ \t]*#[ \t]*if[ \t]+0[ \t]*(?://.*)?$")
++IF_ONE_PATTERN = re.compile(r"^[ \t]*#[ \t]*if[ \t]+1[ \t]*(?://.*)?$")
+ IF_PATTERN = re.compile(r"^[ \t]*#[ \t]*(if|ifdef|ifndef)\b")
++ELIF_ZERO_PATTERN = re.compile(
++    r"^[ \t]*#[ \t]*elif[ \t]+0[ \t]*(?://.*)?$"
++)
++ELIF_ONE_PATTERN = re.compile(
++    r"^[ \t]*#[ \t]*elif[ \t]+1[ \t]*(?://.*)?$"
++)
+ ELIF_PATTERN = re.compile(r"^[ \t]*#[ \t]*(elif|else)\b")
+ ENDIF_PATTERN = re.compile(r"^[ \t]*#[ \t]*endif\b")
+ TEST_CASE_PATTERN = re.compile(
+@@ -230,22 +237,34 @@
+ 
+ 
+ def iter_active_includes(source: str) -> Iterator[Tuple[int, str]]:
+-    """Yield direct includes outside comments and literal #if 0 blocks."""
++    """Yield direct includes outside comments and inactive conditional branches."""
+     active_stack: List[Tuple[bool, bool]] = []
+     active = True
+     in_block_comment = False
+     for line_number, raw_line in enumerate(source.splitlines(), 1):
+         line, in_block_comment = _strip_comments(raw_line, in_block_comment)
+         if IF_ZERO_PATTERN.match(line):
++            active_stack.append((active, False))
++            active = False
++            continue
++        if IF_ONE_PATTERN.match(line):
+             active_stack.append((active, True))
+-            active = False
++            active = active
+             continue
+         if IF_PATTERN.match(line):
+             active_stack.append((active, False))
+             continue
+         if ELIF_PATTERN.match(line) and active_stack:
+-            parent_active, literal_zero = active_stack[-1]
+-            active = parent_active if literal_zero else active
++            parent_active, branch_taken = active_stack[-1]
++            if branch_taken:
++                active = False
++            elif ELIF_ONE_PATTERN.match(line):
++                active_stack[-1] = (parent_active, True)
++                active = parent_active
++            elif ELIF_ZERO_PATTERN.match(line):
++                active = False
++            else:
++                active = parent_active
+             continue
+         if ENDIF_PATTERN.match(line) and active_stack:
+             parent_active, _ = active_stack.pop()
