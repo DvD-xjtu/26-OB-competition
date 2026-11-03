@@ -64,7 +64,7 @@ PowerContext HTTP API（真实服务，默认 http://127.0.0.1:8000）
 
 - Node.js `>= 20.11.0`（开发环境为 `24.21.0`，`.nvmrc` 已固定）
 - Python `3.11+` 与真实 PowerContext 服务
-- `requirements-powercontext.txt` 固定 `powercontext[cli,server]==1.5.0`
+- `requirements-powercontext.txt` 固定 比赛源码 commit `c92dc0fd986d42cbdebae14670755e04be2c4f8f`
 - 不需要安装任何 npm 运行时依赖
 
 如果本机 Python 为 3.14 且部分依赖没有兼容 wheel，请改用 Python 3.12 或 3.13 创建虚拟环境。
@@ -102,7 +102,7 @@ uv pip install -r requirements-powercontext.txt
 ### 2. 启动真实 PowerContext
 
 ```bash
-powercontext server run
+python ../tools/powercontext_server.py --workspace .runtime/powercontext
 ```
 
 默认端点为 `http://127.0.0.1:8000`，使用本地 SQLite。保持该进程运行。
@@ -274,7 +274,7 @@ npm run verify:e2e
 ```text
 .
 ├── public/                     # 中文界面（HTML / CSS / 原生 JS / SVG）
-├── site-dist/                  # 静态项目展示页（未发布）
+├── site-dist/                  # 静态项目展示页（已公开）
 │   └── index.html
 ├── scripts/
 │   ├── verify-offline.mjs      # 无 PowerContext 时的降级语义验证
@@ -304,3 +304,5 @@ npm run verify:e2e
 ## 发布状态
 
 Qoder Sites 已发布并设为公开：https://research-relay-82rwgyi06a8.qoder.website 。这是项目展示页；完整应用按上文在本地连接真实 PowerContext 运行。发布标识见 `evidence/publication.json`。
+
+实际验证使用比赛 PowerContext 固定源码（安装后版本 `0.1.dev797+gc92dc0fd9`）。安装上述 requirements 后，可运行 `python ../tools/powercontext_server.py` 启动与本次验证相同的服务；数据目录通过 `--workspace` 配置。

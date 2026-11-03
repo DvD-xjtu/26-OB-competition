@@ -34,4 +34,4 @@ Linux/macOS 可使用 SDK 支持的嵌入式方式：设置 `SEEKDB_PATH`，安�
 
 ## 当前验证状态
 
-核心单元测试及生产构建通过，真实 seekdb 写入、索引可见性、库内混合检索、集合隔离通过（`evidence/database-integration.json`）。浏览器模型完整链路、量化体积与质量报告尚待完成；未宣称满足全部验收项或获得满分。实验报告必须由本应用实际运行生成，不提供占位性能数字。
+核心单元测试及生产构建通过，真实 seekdb 写入、索引可见性、库内混合检索、集合隔离通过（`evidence/database-integration.json`）。浏览器 FP32/INT8、WebGPU/WASM、批大小1/8完整链路已实际运行，原始记录见 `evidence/browser-benchmarks.json`，体积、质量、延迟与局限见 `REPORT.md`。本机建议 INT8 + 强制WASM + 批大小8；WebGPU INT8 在实测中更慢且排序质量较差。最终分数待平台评审。
