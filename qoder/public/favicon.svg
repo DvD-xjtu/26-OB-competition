@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="实验续航">
+  <rect width="64" height="64" rx="16" fill="#146b5b"/>
+  <path d="M18 40c6 8 22 8 28 0" fill="none" stroke="#f2eee4" stroke-width="4" stroke-linecap="round"/>
+  <path d="M46 16c-6-8-22-8-28 0" fill="none" stroke="#f2eee4" stroke-width="4" stroke-linecap="round" opacity="0.55"/>
+  <circle cx="18" cy="40" r="5" fill="#d4663f"/>
+  <circle cx="46" cy="16" r="5" fill="#f2eee4"/>
+  <circle cx="32" cy="46" r="2.5" fill="#f2eee4" opacity="0.8"/>
+</svg>

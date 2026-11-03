@@ -1,0 +1,8 @@
+node_modules/
+.venv/
+.env
+*.log
+coverage/
+.powercontext-data/
+
+*.qoder.site

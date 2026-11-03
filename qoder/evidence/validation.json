@@ -1,0 +1,47 @@
+{
+  "runtime": "Real PowerContext from c92dc0fd986d42cbdebae14670755e04be2c4f8f at localhost:8000",
+  "results": [
+    {
+      "name": "unit",
+      "command": [
+        "node",
+        "--test",
+        "test/unit.test.js"
+      ],
+      "exit_code": 0,
+      "stdout": "✔ sanitizeText 归一化换行并移除控制字符 (1.4144ms)\n✔ validateTaskInput 提供默认摘要并保留幂等键 (0.9305ms)\n✔ validateTaskInput 拒绝空标题与超长标题 (0.4277ms)\n✔ validateScopeId 拒绝路径分隔符与控制字符 (0.2258ms)\n✔ validateHttpUrl 只接受无凭据的 http/https 地址 (0.2324ms)\n✔ link 记录同时保留标题、链接与说明 (0.4079ms)\n✔ 普通记录拼接补充说明并执行 8192 字节上限 (0.5095ms)\n✔ Memory kind 编码类型与 ISO 时间并可往返解析 (0.8364ms)\n✔ buildScopePayload 带上标题前缀、摘要标记与外部引用 (1.3967ms)\n✔ scope 与任务双向映射并恢复创建时间 (1.1771ms)\n✔ 任务按创建时间倒序排列 (1.889ms)\n✔ normalizeEntry 提取引用、类型与 Source 证据 (1.0009ms)\n✔ 条目倒序与统计按类型计数 (1.0417ms)\n✔ citation 标签包含记忆与 Source 标识 (0.3956ms)\n✔ formatChinaTime 输出 UTC+8 时间 (0.3895ms)\n✔ 交接摘要包含决策、引用、Source 与准备上下文 (1.4376ms)\n✔ 空任务的交接摘要不会伪造来源 (0.386ms)\n✔ buildPreparedQuery 包含任务标题与交接关键词 (0.3252ms)\n✔ loadConfig 校验地址、凭据与端口范围 (0.8087ms)\n✔ PowerContext 网络失败映射为 503 且声明不降级 (1.8865ms)\n✔ PowerContext 401 映射为鉴权错误 (28.2527ms)\nℹ tests 21\nℹ suites 0\nℹ pass 21\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 239.3038\n",
+      "stderr": ""
+    },
+    {
+      "name": "offline",
+      "command": [
+        "node",
+        "scripts/verify-offline.mjs"
+      ],
+      "exit_code": 0,
+      "stdout": "PASS  PowerContext 不可达时 /api/health 明确返回 offline\nPASS  任务列表在服务不可用时返回 503，且声明不降级\nPASS  创建任务在服务不可用时返回 503，不产生本地数据\nPASS  读取任务详情在服务不可用时返回 503\nPASS  写入记录在服务不可用时返回 503\nPASS  搜索完全依赖 PowerContext，不可用时返回 503\nPASS  交接摘要在服务不可用时返回 503\nPASS  静态界面可访问，并带 CSP 等安全响应头\nPASS  favicon 静态资源正常\n\n离线语义验证完成：未使用本地 JSON、模拟后端或任何本地研究数据副本。\n",
+      "stderr": ""
+    },
+    {
+      "name": "integration",
+      "command": [
+        "node",
+        "--test",
+        "test/integration.powercontext.test.js"
+      ],
+      "exit_code": 0,
+      "stdout": "✔ 真实 PowerContext 主流程：双任务隔离、检索、交接与重连 (1762.9491ms)\nℹ 已创建并验证 Scope：scp_2av4cf4eryt3yyx058nz2q2vac, scp_125v5gespbh720qxqahsdezhkq, scp_5dy3jepmm138q0wgyhp980s42y（真实 PowerContext 无本地副本）。\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 2009.4025\n",
+      "stderr": ""
+    },
+    {
+      "name": "e2e",
+      "command": [
+        "node",
+        "scripts/verify-e2e.mjs"
+      ],
+      "exit_code": 0,
+      "stdout": "PowerContext 端点：http://127.0.0.1:8000\nPASS  应用已连接真实 PowerContext，且未启用本地降级\nPASS  创建两个隔离研究任务：scp_2ncd0q81szb6x8sfv08642w97j / scp_4qb428jmjdnx2swvjxdvzdntdq\nPASS  任务 A 写入实验观察、研究决策、下一步待办与原始资料\nPASS  任务 B 写入独立记录\nPASS  任务 A 时间线与 Source 证据均从 PowerContext 读取\nPASS  两个任务的记录相互隔离\nPASS  检索由 PowerContext 完成，返回 4 条命中\nPASS  任务 A 中搜索任务 B 的标记无结果\nPASS  交接摘要包含 Memory 引用、Source 证据与 PowerContext 准备上下文\nPASS  任务列表由 PowerContext Scope 重建\nPASS  应用拒绝访问非实验续航 Scope\nPASS  重启应用后重新读取 PowerContext，研究进展仍然完整\n\n端到端验证完成。本次使用真实 PowerContext 创建 Scope：scp_2ncd0q81szb6x8sfv08642w97j, scp_4qb428jmjdnx2swvjxdvzdntdq, scp_0zm5521f4k48d5p1z6k5kch9zg\n应用无本地研究数据副本；以上 Scope 可在 PowerContext 侧查看。\n",
+      "stderr": ""
+    }
+  ]
+}

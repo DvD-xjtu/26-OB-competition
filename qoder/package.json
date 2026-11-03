@@ -1,0 +1,20 @@
+{
+  "name": "research-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "实验续航 / Research Relay — a PowerContext-backed research handoff workspace",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test test/unit.test.js",
+    "test:integration": "node --test test/integration.powercontext.test.js",
+    "verify:offline": "node scripts/verify-offline.mjs",
+    "verify:e2e": "node scripts/verify-e2e.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

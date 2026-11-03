@@ -1,0 +1,22 @@
+"""Generate a portable Dify workflow; all JSON bodies use a Code serializer."""
+from pathlib import Path
+import yaml
+
+nodes=[];edges=[]
+def node(id,type,title,data):
+    nodes.append({'id':id,'type':'custom','position':{'x':len(nodes)*300,'y':200},'positionAbsolute':{'x':(len(nodes))*300,'y':200},'width':244,'height':100,'sourcePosition':'right','targetPosition':'left','data':{'type':type,'title':title,'desc':'','selected':False,**data}})
+    if len(nodes)>1:
+        prev=nodes[-2];edges.append({'id':prev['id']+'-'+id,'source':prev['id'],'target':id,'sourceHandle':'source','targetHandle':'target','type':'custom','data':{'sourceType':prev['data']['type'],'targetType':type,'isInIteration':False}})
+def code(id,title,variables,code,outputs):node(id,'code',title,{'code_language':'python3','code':code,'variables':[{'variable':k,'value_selector':v}for k,v in variables.items()],'outputs':{k:{'type':'string','children':None} for k in outputs}})
+def http(id,title,route,source):node(id,'http-request',title,{'method':'post','url':'{{#env.bridge_url#}}/'+route,'authorization':{'type':'no-auth','config':None},'headers':'Content-Type:application/json\nAuthorization:Bearer {{#env.bridge_token#}}','params':'','body':{'type':'raw-text','data':[{'id':'body','key':'','type':'text','value':'{{#'+source+'.body#}}'}]},'timeout':{'connect':10,'read':180,'write':20},'retry_config':{'retry_enabled':False,'max_retries':0,'retry_interval':1000},'ssl_verify':True})
+node('start','start','进入倒走钟表旅店',{'variables':[{'variable':k,'label':label,'type':'text-input' if k!='action' else 'paragraph','required':True,'max_length':2000 if k=='action' else 80,'options':[]}for k,label in [('player','玩家标识（跨会话保持一致）'),('chapter','故事存档名'),('action','你想做什么？')]]})
+code('encode','编码请求',{'player':['start','player'],'chapter':['start','chapter']},'import json\ndef main(player, chapter):\n return {"body":json.dumps({"player":player,"chapter":chapter},ensure_ascii=False)}',['body'])
+http('recall','PowerContext 读取历史','recall','encode')
+code('prompt','组装历史与行动',{'response':['recall','body'],'player':['start','player'],'chapter':['start','chapter'],'action':['start','action']},'import json\ndef main(response, player, chapter, action):\n data=json.loads(response)\n if "error" in data: raise ValueError(data["error"])\n return {"body":json.dumps({"player":player,"chapter":chapter,"action":action,"history":data["history"]},ensure_ascii=False)}',['body'])
+http('narrate','生成有记忆的剧情','narrate','prompt')
+code('encode_save','编码剧情存档',{'response':['narrate','body'],'player':['start','player'],'chapter':['start','chapter'],'action':['start','action']},'import json\ndef main(response, player, chapter, action):\n data=json.loads(response)\n if "error" in data: raise ValueError(data["error"])\n return {"body":json.dumps({"player":player,"chapter":chapter,"action":action,"story":data["story"]},ensure_ascii=False)}',['body'])
+http('save','PowerContext 保存后果','remember','encode_save')
+code('result','确认存档成功',{'response':['save','body']},'import json\ndef main(response):\n data=json.loads(response)\n if not data.get("saved"): raise ValueError(data.get("error","State was not saved"))\n return {"story":data["story"],"citation":json.dumps(data.get("citation"),ensure_ascii=False)}',['story','citation'])
+node('end','end','展示剧情与来源',{'outputs':[{'variable':k,'value_selector':['result',k]}for k in ['story','citation']]})
+dsl={'app':{'name':'倒走钟表旅店','description':'每次选择都留有后果的互动故事。Dify编排读取、生成与存档，PowerContext跨会话记忆。','icon':'🕰️','icon_background':'#E4FBCC','mode':'workflow','use_icon_as_answer_icon':False},'kind':'app','version':'0.3.0','dependencies':[],'workflow':{'conversation_variables':[],'environment_variables':[{'id':'bridge-url','name':'bridge_url','value':'http://host.docker.internal:8766','value_type':'string','description':'配套服务地址'},{'id':'bridge-token','name':'bridge_token','value':'','value_type':'secret','description':'与BRIDGE_TOKEN一致'}],'features':{'file_upload':{'enabled':False},'opening_statement':'','retriever_resource':{'enabled':True},'sensitive_word_avoidance':{'enabled':False},'speech_to_text':{'enabled':False},'suggested_questions':[],'suggested_questions_after_answer':{'enabled':False},'text_to_speech':{'enabled':False}},'graph':{'nodes':nodes,'edges':edges,'viewport':{'x':0,'y':0,'zoom':.6}}}}
+Path(__file__).with_name('clockwork-inn.yml').write_text(yaml.safe_dump(dsl,allow_unicode=True,sort_keys=False),encoding='utf-8')

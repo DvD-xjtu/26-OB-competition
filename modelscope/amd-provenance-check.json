@@ -1,0 +1,15 @@
+{
+  "repository": "C:\\Users\\ZZZ\\Desktop\\数据库\\amd-v5",
+  "checks": {
+    "base": "resolved",
+    "candidate": "resolved",
+    "ancestry": "pass",
+    "worktree": "clean"
+  },
+  "base_commit": "634888d9b037153fa143d2c913ba4b25503e1d62",
+  "candidate_commit": "c8969b3839ad2880916d40c7a5e3dd0842644fb0",
+  "worktree_changes": [],
+  "branch": "amd-cagra-v5-opt",
+  "ready_for_runtime_validation": true,
+  "runtime_validation": "not_performed_by_this_script"
+}

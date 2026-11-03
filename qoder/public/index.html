@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="实验续航 / Research Relay：以 PowerContext 为真实记忆层的研究记录与交接工作台。"
+    />
+    <meta name="color-scheme" content="light" />
+    <title>实验续航 / Research Relay</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="#/" aria-label="实验续航首页">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <span class="brand-text">
+          <strong>实验续航</strong>
+          <small>RESEARCH RELAY</small>
+        </span>
+      </a>
+      <div class="topbar-meta">
+        <span class="provenance-pill" title="研究内容只通过 PowerContext HTTP API 读写">
+          PowerContext 记忆层
+        </span>
+        <button
+          id="health-chip"
+          class="health-chip is-checking"
+          type="button"
+          aria-live="polite"
+          title="点击重新检测 PowerContext"
+        >
+          检测服务中…
+        </button>
+      </div>
+    </header>
+
+    <section id="offline-banner" class="banner" hidden aria-live="polite">
+      <div class="banner-icon" aria-hidden="true">!</div>
+      <div class="banner-copy">
+        <strong id="banner-title">PowerContext 服务不可用</strong>
+        <p id="banner-detail"></p>
+      </div>
+      <button id="banner-retry" class="btn btn-small btn-light" type="button">
+        重新检测
+      </button>
+    </section>
+
+    <main class="shell">
+      <aside class="sidebar" aria-label="研究任务">
+        <div class="sidebar-head">
+          <div>
+            <p class="eyebrow">研究台</p>
+            <h2>任务</h2>
+          </div>
+          <button
+            id="new-task-btn"
+            class="icon-btn"
+            type="button"
+            title="新建研究任务"
+            aria-label="新建研究任务"
+            data-requires-service
+          >
+            <span aria-hidden="true">+</span>
+          </button>
+        </div>
+
+        <div id="task-list" class="task-list"></div>
+
+        <div class="sidebar-foot">
+          <section class="service-card" id="service-card" aria-live="polite">
+            <div class="service-card-head">
+              <span class="service-dot" aria-hidden="true"></span>
+              <span class="service-title">PowerContext</span>
+            </div>
+            <p id="service-status" class="service-status">正在检测服务…</p>
+            <dl class="service-facts">
+              <div>
+                <dt>端点</dt>
+                <dd id="service-endpoint" class="mono">—</dd>
+              </div>
+              <div>
+                <dt>令牌</dt>
+                <dd id="service-token">—</dd>
+              </div>
+              <div>
+                <dt>版本</dt>
+                <dd id="service-version">—</dd>
+              </div>
+              <div>
+                <dt>检测于</dt>
+                <dd id="service-checked">—</dd>
+              </div>
+            </dl>
+            <button
+              id="service-retry"
+              class="btn btn-ghost btn-small btn-block"
+              type="button"
+            >
+              重新检测
+            </button>
+            <p class="service-note">
+              本应用不保存本地 JSON，也不提供模拟后端。服务不可用时只显示错误。
+            </p>
+          </section>
+        </div>
+      </aside>
+
+      <section class="workspace" aria-live="polite">
+        <div id="workspace-empty" class="empty-state">
+          <p class="eyebrow">POWERCONTEXT MEMORY LAYER</p>
+          <h1>让研究进展，<br /><em>接得上。</em></h1>
+          <p class="empty-lead">
+            把实验观察、关键决策、下一步待办和原始资料链接写进 PowerContext。
+            刷新页面、重启应用或换一个新会话，研究上下文仍然在那里。
+          </p>
+          <button
+            id="empty-create"
+            class="btn btn-primary btn-large"
+            type="button"
+            data-requires-service
+          >
+            创建第一个研究任务
+          </button>
+          <p class="empty-note">
+            每个研究任务对应一个独立的 PowerContext Scope。所有写入都需要真实服务在线。
+          </p>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="feature-index">01</span>
+              <h3>记录，不只是聊天</h3>
+              <p>四类结构化进展写入 Memory，链接额外保存为 Source 证据。</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-index">02</span>
+              <h3>交接，附来源</h3>
+              <p>交接摘要列出每条记忆引用与 Source 摘要，拒绝无出处的总结。</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-index">03</span>
+              <h3>隔离，可追溯</h3>
+              <p>任务之间使用不同 Scope；服务不可用时明确报错，不静默降级。</p>
+            </article>
+          </div>
+        </div>
+
+        <div id="workspace-status" class="workspace-status" hidden></div>
+
+        <div id="workspace-task" hidden>
+          <header class="task-header">
+            <div class="task-heading">
+              <p class="eyebrow">RESEARCH SCOPE</p>
+              <h1 id="task-title"></h1>
+              <p id="task-summary" class="task-summary"></p>
+              <div class="task-meta">
+                <button
+                  id="copy-scope"
+                  class="meta-chip meta-button"
+                  type="button"
+                  title="复制完整 PowerContext Scope ID"
+                >
+                  <span class="meta-label">Scope</span>
+                  <span id="scope-short" class="mono"></span>
+                </button>
+                <span id="task-created" class="meta-chip"></span>
+                <span class="meta-chip meta-static">仅存于 PowerContext</span>
+              </div>
+            </div>
+            <div id="task-stats" class="stats" aria-label="记录统计"></div>
+          </header>
+
+          <div class="tabs" role="tablist" aria-label="任务视图">
+            <button
+              class="tab is-active"
+              id="tab-timeline"
+              role="tab"
+              type="button"
+              aria-selected="true"
+              aria-controls="panel-timeline"
+              data-tab="timeline"
+            >
+              进展记录 <span class="tab-count" id="tab-count">0</span>
+            </button>
+            <button
+              class="tab"
+              id="tab-search"
+              role="tab"
+              type="button"
+              aria-selected="false"
+              aria-controls="panel-search"
+              data-tab="search"
+            >
+              搜索
+            </button>
+            <button
+              class="tab"
+              id="tab-handoff"
+              role="tab"
+              type="button"
+              aria-selected="false"
+              aria-controls="panel-handoff"
+              data-tab="handoff"
+            >
+              交接摘要
+            </button>
+          </div>
+
+          <section
+            id="panel-timeline"
+            class="panel"
+            role="tabpanel"
+            aria-labelledby="tab-timeline"
+          >
+            <div class="timeline-layout">
+              <div class="timeline-column">
+                <div class="section-head">
+                  <div>
+                    <p class="eyebrow">RESEARCH LOG</p>
+                    <h2>研究时间线</h2>
+                  </div>
+                  <button id="refresh-detail" class="text-btn" type="button">
+                    刷新
+                  </button>
+                </div>
+                <div id="timeline" class="timeline"></div>
+              </div>
+
+              <aside class="composer-column">
+                <form id="entry-form" class="card composer" novalidate>
+                  <div class="composer-head">
+                    <div>
+                      <p class="eyebrow">WRITE TO POWERCONTEXT</p>
+                      <h2>记录一条进展</h2>
+                    </div>
+                    <span class="source-pill">/v1/memory/remember</span>
+                  </div>
+
+                  <fieldset class="type-picker">
+                    <legend class="sr-only">记录类型</legend>
+                    <label class="type-option is-selected" data-type="observation">
+                      <input
+                        type="radio"
+                        name="entry-type"
+                        value="observation"
+                        checked
+                      />
+                      <span class="type-dot" aria-hidden="true"></span>
+                      <span class="type-copy">
+                        <strong>实验观察</strong>
+                        <small>测量、现象、异常</small>
+                      </span>
+                    </label>
+                    <label class="type-option" data-type="decision">
+                      <input type="radio" name="entry-type" value="decision" />
+                      <span class="type-dot" aria-hidden="true"></span>
+                      <span class="type-copy">
+                        <strong>研究决策</strong>
+                        <small>取舍、依据、影响</small>
+                      </span>
+                    </label>
+                    <label class="type-option" data-type="todo">
+                      <input type="radio" name="entry-type" value="todo" />
+                      <span class="type-dot" aria-hidden="true"></span>
+                      <span class="type-copy">
+                        <strong>下一步待办</strong>
+                        <small>可执行的下一个动作</small>
+                      </span>
+                    </label>
+                    <label class="type-option" data-type="link">
+                      <input type="radio" name="entry-type" value="link" />
+                      <span class="type-dot" aria-hidden="true"></span>
+                      <span class="type-copy">
+                        <strong>原始资料</strong>
+                        <small>链接 + 来源证据</small>
+                      </span>
+                    </label>
+                  </fieldset>
+
+                  <p id="type-hint" class="type-hint">
+                    记录现象、测量值、异常或实验条件。
+                  </p>
+
+                  <div id="link-fields" class="field-stack" hidden>
+                    <label class="field">
+                      <span class="field-label">资料标题</span>
+                      <input
+                        id="link-title"
+                        type="text"
+                        maxlength="200"
+                        placeholder="例如：PowerContext API 文档"
+                        autocomplete="off"
+                      />
+                    </label>
+                    <label class="field">
+                      <span class="field-label">链接 URL</span>
+                      <input
+                        id="link-url"
+                        type="url"
+                        maxlength="2048"
+                        placeholder="https://…"
+                        autocomplete="url"
+                      />
+                    </label>
+                  </div>
+
+                  <label id="text-field" class="field">
+                    <span class="field-label" id="text-label">观察内容</span>
+                    <textarea
+                      id="entry-text"
+                      rows="6"
+                      maxlength="7000"
+                      placeholder="例如：第 3 组在 37.2°C 下反应 24h，产率 68%，较上批高 4 个百分点。"
+                    ></textarea>
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">补充说明（可选）</span>
+                    <textarea
+                      id="entry-note"
+                      rows="2"
+                      maxlength="2000"
+                      placeholder="补充条件、判断依据或来源说明"
+                    ></textarea>
+                  </label>
+
+                  <div class="form-foot">
+                    <span id="char-count" class="char-count">0 / 8192 字节</span>
+                    <button
+                      id="entry-submit"
+                      class="btn btn-primary"
+                      type="submit"
+                      data-requires-service
+                    >
+                      保存到 PowerContext
+                    </button>
+                  </div>
+                  <p id="entry-error" class="form-error" role="alert" hidden></p>
+                  <p class="form-hint">
+                    直接写入 PowerContext Memory。原始资料会额外写入 Source
+                    证据；不会写入本地文件。
+                  </p>
+                </form>
+              </aside>
+            </div>
+          </section>
+
+          <section
+            id="panel-search"
+            class="panel"
+            role="tabpanel"
+            aria-labelledby="tab-search"
+            hidden
+          >
+            <div class="card panel-card">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">POWERCONTEXT SEARCH</p>
+                  <h2>搜索研究进展</h2>
+                </div>
+                <span class="source-pill">/v1/memory/search</span>
+              </div>
+              <form id="search-form" class="search-bar" novalidate>
+                <label class="sr-only" for="search-query">搜索关键词</label>
+                <input
+                  id="search-query"
+                  type="search"
+                  maxlength="1000"
+                  placeholder="搜索观察、决策、待办或资料标题…"
+                  autocomplete="off"
+                />
+                <button
+                  id="search-submit"
+                  class="btn btn-primary"
+                  type="submit"
+                  data-requires-service
+                >
+                  搜索
+                </button>
+              </form>
+              <p class="field-help">
+                检索由 PowerContext 在当前任务的 Scope 内执行，不遍历本地缓存或模拟索引。
+              </p>
+              <div id="search-meta" class="search-meta"></div>
+              <div id="search-results" class="search-results"></div>
+            </div>
+          </section>
+
+          <section
+            id="panel-handoff"
+            class="panel"
+            role="tabpanel"
+            aria-labelledby="tab-handoff"
+            hidden
+          >
+            <div class="card panel-card">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">HANDOFF WITH CITATIONS</p>
+                  <h2>交接摘要</h2>
+                </div>
+                <button
+                  id="handoff-generate"
+                  class="btn btn-primary btn-small"
+                  type="button"
+                  data-requires-service
+                >
+                  生成交接摘要
+                </button>
+              </div>
+              <p class="field-help">
+                摘要由当前任务的 Memory 列表、Source 证据与
+                <code>/v1/context/prepare</code> 组合生成，每条记录附记忆引用。
+              </p>
+              <div id="handoff-meta" class="handoff-meta"></div>
+              <div id="handoff-warnings" class="handoff-warnings"></div>
+              <div id="handoff-empty" class="inline-empty">
+                点击“生成交接摘要”，从 PowerContext 读取最新进展。
+              </div>
+              <div id="handoff-output-wrap" hidden>
+                <div class="handoff-toolbar">
+                  <button id="handoff-copy" class="btn btn-ghost btn-small" type="button">
+                    复制 Markdown
+                  </button>
+                  <button
+                    id="handoff-download"
+                    class="btn btn-ghost btn-small"
+                    type="button"
+                  >
+                    下载 .md
+                  </button>
+                </div>
+                <pre id="handoff-output" class="handoff-output"></pre>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="create-dialog" class="dialog" aria-labelledby="create-title-label">
+      <form id="create-form" class="dialog-card" novalidate>
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">NEW RESEARCH SCOPE</p>
+            <h2 id="create-title-label">新建研究任务</h2>
+          </div>
+          <button
+            id="create-close"
+            class="icon-btn icon-btn-quiet"
+            type="button"
+            aria-label="关闭"
+          >
+            ×
+          </button>
+        </div>
+        <p class="dialog-lead">
+          任务会创建一个独立的 PowerContext Scope。标题与摘要也保存在该 Scope 中。
+        </p>
+        <label class="field">
+          <span class="field-label">任务名称</span>
+          <input
+            id="create-title"
+            type="text"
+            maxlength="120"
+            placeholder="例如：钙钛矿薄膜稳定性验证"
+            required
+            autocomplete="off"
+          />
+        </label>
+        <label class="field">
+          <span class="field-label">研究摘要（可选）</span>
+          <textarea
+            id="create-summary"
+            rows="4"
+            maxlength="1500"
+            placeholder="一句话说明研究目标、范围或当前阶段"
+          ></textarea>
+        </label>
+        <p id="create-error" class="form-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button id="create-cancel" class="btn btn-ghost" type="button">取消</button>
+          <button id="create-submit" class="btn btn-primary" type="submit">
+            创建任务
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast-region" class="toast-region" aria-live="assertive"></div>
+
+    <noscript>
+      <div class="noscript">实验续航需要启用 JavaScript 才能连接 PowerContext。</div>
+    </noscript>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

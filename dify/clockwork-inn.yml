@@ -1,0 +1,466 @@
+app:
+  name: 倒走钟表旅店
+  description: 每次选择都留有后果的互动故事。Dify编排读取、生成与存档，PowerContext跨会话记忆。
+  icon: 🕰️
+  icon_background: '#E4FBCC'
+  mode: workflow
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.3.0
+dependencies: []
+workflow:
+  conversation_variables: []
+  environment_variables:
+  - id: bridge-url
+    name: bridge_url
+    value: http://host.docker.internal:8766
+    value_type: string
+    description: 配套服务地址
+  - id: bridge-token
+    name: bridge_token
+    value: ''
+    value_type: secret
+    description: 与BRIDGE_TOKEN一致
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    nodes:
+    - id: start
+      type: custom
+      position:
+        x: 0
+        y: 200
+      positionAbsolute:
+        x: 0
+        y: 200
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: start
+        title: 进入倒走钟表旅店
+        desc: ''
+        selected: false
+        variables:
+        - variable: player
+          label: 玩家标识（跨会话保持一致）
+          type: text-input
+          required: true
+          max_length: 80
+          options: []
+        - variable: chapter
+          label: 故事存档名
+          type: text-input
+          required: true
+          max_length: 80
+          options: []
+        - variable: action
+          label: 你想做什么？
+          type: paragraph
+          required: true
+          max_length: 2000
+          options: []
+    - id: encode
+      type: custom
+      position:
+        x: 300
+        y: 200
+      positionAbsolute:
+        x: 300
+        y: 200
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: code
+        title: 编码请求
+        desc: ''
+        selected: false
+        code_language: python3
+        code: "import json\ndef main(player, chapter):\n return {\"body\":json.dumps({\"\
+          player\":player,\"chapter\":chapter},ensure_ascii=False)}"
+        variables:
+        - variable: player
+          value_selector:
+          - start
+          - player
+        - variable: chapter
+          value_selector:
+          - start
+          - chapter
+        outputs:
+          body:
+            type: string
+            children: null
+    - id: recall
+      type: custom
+      position:
+        x: 600
+        y: 200
+      positionAbsolute:
+        x: 600
+        y: 200
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: http-request
+        title: PowerContext 读取历史
+        desc: ''
+        selected: false
+        method: post
+        url: '{{#env.bridge_url#}}/recall'
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          Authorization:Bearer {{#env.bridge_token#}}'
+        params: ''
+        body:
+          type: raw-text
+          data:
+          - id: body
+            key: ''
+            type: text
+            value: '{{#encode.body#}}'
+        timeout:
+          connect: 10
+          read: 180
+          write: 20
+        retry_config:
+          retry_enabled: false
+          max_retries: 0
+          retry_interval: 1000
+        ssl_verify: true
+    - id: prompt
+      type: custom
+      position:
+        x: 900
+        y: 200
+      positionAbsolute:
+        x: 900
+        y: 200
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: code
+        title: 组装历史与行动
+        desc: ''
+        selected: false
+        code_language: python3
+        code: "import json\ndef main(response, player, chapter, action):\n data=json.loads(response)\n\
+          \ if \"error\" in data: raise ValueError(data[\"error\"])\n return {\"body\"\
+          :json.dumps({\"player\":player,\"chapter\":chapter,\"action\":action,\"\
+          history\":data[\"history\"]},ensure_ascii=False)}"
+        variables:
+        - variable: response
+          value_selector:
+          - recall
+          - body
+        - variable: player
+          value_selector:
+          - start
+          - player
+        - variable: chapter
+          value_selector:
+          - start
+          - chapter
+        - variable: action
+          value_selector:
+          - start
+          - action
+        outputs:
+          body:
+            type: string
+            children: null
+    - id: narrate
+      type: custom
+      position:
+        x: 1200
+        y: 200
+      positionAbsolute:
+        x: 1200
+        y: 200
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: http-request
+        title: 生成有记忆的剧情
+        desc: ''
+        selected: false
+        method: post
+        url: '{{#env.bridge_url#}}/narrate'
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          Authorization:Bearer {{#env.bridge_token#}}'
+        params: ''
+        body:
+          type: raw-text
+          data:
+          - id: body
+            key: ''
+            type: text
+            value: '{{#prompt.body#}}'
+        timeout:
+          connect: 10
+          read: 180
+          write: 20
+        retry_config:
+          retry_enabled: false
+          max_retries: 0
+          retry_interval: 1000
+        ssl_verify: true
+    - id: encode_save
+      type: custom
+      position:
+        x: 1500
+        y: 200
+      positionAbsolute:
+        x: 1500
+        y: 200
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: code
+        title: 编码剧情存档
+        desc: ''
+        selected: false
+        code_language: python3
+        code: "import json\ndef main(response, player, chapter, action):\n data=json.loads(response)\n\
+          \ if \"error\" in data: raise ValueError(data[\"error\"])\n return {\"body\"\
+          :json.dumps({\"player\":player,\"chapter\":chapter,\"action\":action,\"\
+          story\":data[\"story\"]},ensure_ascii=False)}"
+        variables:
+        - variable: response
+          value_selector:
+          - narrate
+          - body
+        - variable: player
+          value_selector:
+          - start
+          - player
+        - variable: chapter
+          value_selector:
+          - start
+          - chapter
+        - variable: action
+          value_selector:
+          - start
+          - action
+        outputs:
+          body:
+            type: string
+            children: null
+    - id: save
+      type: custom
+      position:
+        x: 1800
+        y: 200
+      positionAbsolute:
+        x: 1800
+        y: 200
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: http-request
+        title: PowerContext 保存后果
+        desc: ''
+        selected: false
+        method: post
+        url: '{{#env.bridge_url#}}/remember'
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          Authorization:Bearer {{#env.bridge_token#}}'
+        params: ''
+        body:
+          type: raw-text
+          data:
+          - id: body
+            key: ''
+            type: text
+            value: '{{#encode_save.body#}}'
+        timeout:
+          connect: 10
+          read: 180
+          write: 20
+        retry_config:
+          retry_enabled: false
+          max_retries: 0
+          retry_interval: 1000
+        ssl_verify: true
+    - id: result
+      type: custom
+      position:
+        x: 2100
+        y: 200
+      positionAbsolute:
+        x: 2100
+        y: 200
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: code
+        title: 确认存档成功
+        desc: ''
+        selected: false
+        code_language: python3
+        code: "import json\ndef main(response):\n data=json.loads(response)\n if not\
+          \ data.get(\"saved\"): raise ValueError(data.get(\"error\",\"State was not\
+          \ saved\"))\n return {\"story\":data[\"story\"],\"citation\":json.dumps(data.get(\"\
+          citation\"),ensure_ascii=False)}"
+        variables:
+        - variable: response
+          value_selector:
+          - save
+          - body
+        outputs:
+          story:
+            type: string
+            children: null
+          citation:
+            type: string
+            children: null
+    - id: end
+      type: custom
+      position:
+        x: 2400
+        y: 200
+      positionAbsolute:
+        x: 2400
+        y: 200
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: end
+        title: 展示剧情与来源
+        desc: ''
+        selected: false
+        outputs:
+        - variable: story
+          value_selector:
+          - result
+          - story
+        - variable: citation
+          value_selector:
+          - result
+          - citation
+    edges:
+    - id: start-encode
+      source: start
+      target: encode
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: start
+        targetType: code
+        isInIteration: false
+    - id: encode-recall
+      source: encode
+      target: recall
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: code
+        targetType: http-request
+        isInIteration: false
+    - id: recall-prompt
+      source: recall
+      target: prompt
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: http-request
+        targetType: code
+        isInIteration: false
+    - id: prompt-narrate
+      source: prompt
+      target: narrate
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: code
+        targetType: http-request
+        isInIteration: false
+    - id: narrate-encode_save
+      source: narrate
+      target: encode_save
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: http-request
+        targetType: code
+        isInIteration: false
+    - id: encode_save-save
+      source: encode_save
+      target: save
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: code
+        targetType: http-request
+        isInIteration: false
+    - id: save-result
+      source: save
+      target: result
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: http-request
+        targetType: code
+        isInIteration: false
+    - id: result-end
+      source: result
+      target: end
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: code
+        targetType: end
+        isInIteration: false
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.6

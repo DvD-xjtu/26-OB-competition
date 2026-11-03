@@ -1,0 +1,53 @@
+{
+  "note": "API integration with a deterministic test vector; NOT model quality/performance evidence",
+  "write": {
+    "count": 1,
+    "writeMs": 270.5185999999958,
+    "refreshMs": 779.366200000004
+  },
+  "search": {
+    "result": {
+      "ids": [
+        [
+          "alpha"
+        ]
+      ],
+      "distances": [
+        [
+          0.0328
+        ]
+      ],
+      "documents": [
+        [
+          "alpha protocol verification"
+        ]
+      ],
+      "metadatas": [
+        [
+          {
+            "chunk": 0,
+            "source": "integration-test"
+          }
+        ]
+      ]
+    },
+    "searchMs": 27.56840000000375
+  },
+  "isolated": {
+    "result": {
+      "ids": [
+        []
+      ],
+      "distances": [
+        []
+      ],
+      "documents": [
+        []
+      ],
+      "metadatas": [
+        []
+      ]
+    },
+    "searchMs": 10.51600000000326
+  }
+}

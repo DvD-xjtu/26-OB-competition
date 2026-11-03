@@ -1,0 +1,4 @@
+# Real PowerContext server installed into the project-local virtualenv.
+# Official documentation: https://github.com/oceanbase/powercontext
+# If Python 3.14 lacks a compatible wheel, use Python 3.12 or 3.13.
+powercontext[cli,server]==1.5.0

@@ -1,0 +1,7 @@
+请在 C:/Users/ZZZ/Desktop/数据库/ecosystem/qoder 中实际开发一个完整的 OceanBase Qoder 赛题项目，名称“实验续航 / Research Relay”。仅修改该 qoder 目录，不修改其他题目。项目主要开发必须由你 Qoder 完成并保留开发说明。不要开启子代理。
+
+功能：研究者创建研究任务，录入实验观察、决策、待办和原始资料链接。使用真实 PowerContext HTTP API 保存并在刷新/新会话后复用研究进展，输出附来源的交接摘要。搜索必须利用 PowerContext。支持至少两个研究任务隔离。清晰标识服务不可用，禁止把本地JSON或模拟后端当作PowerContext。提供响应式中文网页，细致美观且易用。
+
+你可以从本机仓库 C:/Users/ZZZ/Desktop/数据库/26-OB-competition 的 origin/powercontext-2026 分支读取 docs/en/docs/develop/api-quickstart.md、openapi/powercontext.yaml 等，以核对实际 API。不读取用户凭据文件。当前工具有Node.js、Python以及WSL Ubuntu；依赖可以通过npm安装到项目内。
+
+交付完整源码、固定依赖、配置示例（无真实密钥）、运行说明、可复现的验证样例、自动化测试和开发记录。主要流程由真实PowerContext负责，不只是测试连接。不要声称未执行的测试已通过，不编造用户量、提效或截图。最终还需要通过Qoder Sites发布公开展示网站，但本次先完成源码和本地验证，不发布。请在DEVELOPMENT.md记录你所完成的开发步骤与实际测试命令。限制外部操作：不发送消息、不创建账号、不购买服务、不修改全局配置、不访问其他工作目录、不提交/推送Git。

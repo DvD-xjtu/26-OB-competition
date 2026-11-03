@@ -1,0 +1,1725 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="实验续航 / Research Relay：以真实 PowerContext 为记忆层的研究记录与交接工作台。静态项目展示页，不包含在线后端。"
+    />
+    <meta name="color-scheme" content="light" />
+    <title>实验续航 / Research Relay · 项目展示</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='%23146b5b'/%3E%3Cpath%20d='M18%2040c6%208%2022%208%2028%200'%20fill='none'%20stroke='%23f2eee4'%20stroke-width='4'%20stroke-linecap='round'/%3E%3Cpath%20d='M46%2016c-6-8-22-8-28%200'%20fill='none'%20stroke='%23f2eee4'%20stroke-width='4'%20stroke-linecap='round'%20opacity='.55'/%3E%3Ccircle%20cx='18'%20cy='40'%20r='5'%20fill='%23d4663f'/%3E%3Ccircle%20cx='46'%20cy='16'%20r='5'%20fill='%23f2eee4'/%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        --paper: #f3eee3;
+        --paper-deep: #e7dfcd;
+        --surface: #fffdf7;
+        --surface-soft: #faf6ec;
+        --ink: #1d2a25;
+        --ink-soft: #3d4b45;
+        --muted: #6d7a72;
+        --line: #d8cfbd;
+        --line-strong: #c3b69c;
+        --brand: #146b5b;
+        --brand-deep: #0b4b40;
+        --brand-soft: #dcece6;
+        --coral: #c95f3a;
+        --coral-soft: #f7e1d7;
+        --gold: #94671f;
+        --gold-soft: #f4e9cf;
+        --blue: #386a98;
+        --blue-soft: #dce9f3;
+        --ok: #1f7a4d;
+        --ok-soft: #e0f0e5;
+        --warn: #97651b;
+        --warn-soft: #f6ead0;
+        --shadow: 0 24px 70px rgba(54, 45, 31, 0.11);
+        --shadow-soft: 0 10px 30px rgba(54, 45, 31, 0.07);
+        --radius: 24px;
+        --font-body: "Inter", "PingFang SC", "Hiragino Sans GB",
+          "Microsoft YaHei", "Noto Sans SC", sans-serif;
+        --font-display: "Noto Serif SC", "Songti SC", "STSong", "SimSun",
+          Georgia, serif;
+        --font-mono: "SFMono-Regular", "Cascadia Code", Consolas,
+          "Liberation Mono", monospace;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 8% 4%, rgba(20, 107, 91, 0.12), transparent 32%),
+          radial-gradient(circle at 92% 8%, rgba(201, 95, 58, 0.12), transparent 28%),
+          linear-gradient(180deg, var(--paper) 0%, #f7f2e8 48%, var(--paper) 100%);
+        font-family: var(--font-body);
+        line-height: 1.7;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .skip-link {
+        position: absolute;
+        left: -999px;
+        top: 12px;
+        z-index: 100;
+        padding: 10px 16px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: #fff;
+      }
+
+      .skip-link:focus {
+        left: 12px;
+      }
+
+      .wrap {
+        width: min(1160px, calc(100% - 48px));
+        margin: 0 auto;
+      }
+
+      .nav {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        border-bottom: 1px solid rgba(195, 182, 156, 0.55);
+        background: rgba(243, 238, 227, 0.86);
+        backdrop-filter: blur(16px);
+      }
+
+      .nav-inner {
+        display: flex;
+        align-items: center;
+        gap: 26px;
+        min-height: 72px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 11px;
+        text-decoration: none;
+        flex: 0 0 auto;
+      }
+
+      .brand-mark {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        background: var(--brand);
+        box-shadow: 0 8px 20px rgba(20, 107, 91, 0.24);
+      }
+
+      .brand-mark::before,
+      .brand-mark::after {
+        content: "";
+        position: absolute;
+        border-radius: 50%;
+      }
+
+      .brand-mark::before {
+        width: 19px;
+        height: 19px;
+        border: 2px solid rgba(255, 253, 247, 0.9);
+        border-left-color: transparent;
+        transform: rotate(-28deg);
+      }
+
+      .brand-mark::after {
+        width: 6px;
+        height: 6px;
+        right: 8px;
+        top: 8px;
+        background: #f8d7b0;
+      }
+
+      .brand-text {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.1;
+      }
+
+      .brand-text strong {
+        font-family: var(--font-display);
+        font-size: 17px;
+        letter-spacing: 0.04em;
+      }
+
+      .brand-text small {
+        margin-top: 4px;
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.18em;
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        margin-left: auto;
+        font-size: 13px;
+      }
+
+      .nav-links a {
+        color: var(--muted);
+        text-decoration: none;
+        transition: color 160ms ease;
+      }
+
+      .nav-links a:hover,
+      .nav-links a:focus-visible {
+        color: var(--brand-deep);
+      }
+
+      .nav-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 15px;
+        border: 1px solid var(--brand);
+        border-radius: 999px;
+        color: var(--brand-deep) !important;
+        background: rgba(255, 253, 247, 0.55);
+        font-weight: 700;
+        white-space: nowrap;
+        transition:
+          background 160ms ease,
+          color 160ms ease,
+          transform 160ms ease;
+      }
+
+      .nav-cta:hover {
+        background: var(--brand);
+        color: #fff !important;
+        transform: translateY(-1px);
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 82px 0 70px;
+      }
+
+      .hero::after {
+        content: "";
+        position: absolute;
+        right: -160px;
+        top: 40px;
+        width: 480px;
+        height: 480px;
+        border: 1px solid rgba(20, 107, 91, 0.14);
+        border-radius: 50%;
+        pointer-events: none;
+      }
+
+      .hero-grid {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1.12fr) minmax(340px, 0.88fr);
+        gap: 58px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        margin: 0 0 20px;
+        color: var(--brand);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 26px;
+        height: 1px;
+        background: currentColor;
+      }
+
+      .hero h1 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: clamp(52px, 7.2vw, 92px);
+        font-weight: 600;
+        letter-spacing: -0.045em;
+        line-height: 1.05;
+      }
+
+      .hero h1 em {
+        color: var(--coral);
+        font-style: italic;
+        font-weight: 600;
+      }
+
+      .hero-lead {
+        max-width: 610px;
+        margin: 26px 0 0;
+        color: var(--ink-soft);
+        font-size: 17px;
+        line-height: 1.9;
+      }
+
+      .hero-lead strong {
+        color: var(--ink);
+      }
+
+      .badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 26px 0 0;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 253, 247, 0.7);
+        color: var(--ink-soft);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .badge::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--brand);
+      }
+
+      .badge.accent::before {
+        background: var(--coral);
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 32px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        min-height: 48px;
+        padding: 0 22px;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 700;
+        transition:
+          transform 160ms ease,
+          box-shadow 160ms ease,
+          background 160ms ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+      }
+
+      .btn-primary {
+        background: var(--brand);
+        color: #fff;
+        box-shadow: 0 14px 30px rgba(20, 107, 91, 0.24);
+      }
+
+      .btn-primary:hover {
+        background: var(--brand-deep);
+      }
+
+      .btn-ghost {
+        border-color: var(--line-strong);
+        background: rgba(255, 253, 247, 0.65);
+        color: var(--ink);
+      }
+
+      .btn-ghost:hover {
+        background: #fff;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .hero-note {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        max-width: 620px;
+        margin: 24px 0 0;
+        padding: 12px 15px;
+        border-left: 3px solid var(--gold);
+        border-radius: 0 10px 10px 0;
+        background: rgba(244, 233, 207, 0.5);
+        color: var(--ink-soft);
+        font-size: 12.5px;
+      }
+
+      .hero-note strong {
+        color: var(--gold);
+      }
+
+      .scope-card {
+        position: relative;
+        margin: 0;
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        background:
+          linear-gradient(160deg, rgba(255, 253, 247, 0.96), rgba(250, 246, 236, 0.92));
+        box-shadow: var(--shadow);
+        transform: rotate(1.2deg);
+      }
+
+      .scope-card::before {
+        content: "";
+        position: absolute;
+        inset: 10px;
+        border: 1px dashed rgba(195, 182, 156, 0.55);
+        border-radius: 21px;
+        pointer-events: none;
+      }
+
+      .scope-head {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .scope-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.13em;
+      }
+
+      .scope-kicker::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--ok);
+        box-shadow: 0 0 0 4px var(--ok-soft);
+      }
+
+      .scope-id {
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand-deep);
+        font-family: var(--font-mono);
+        font-size: 9px;
+      }
+
+      .scope-card h3 {
+        position: relative;
+        margin: 18px 0 4px;
+        font-family: var(--font-display);
+        font-size: 24px;
+        line-height: 1.35;
+      }
+
+      .scope-sub {
+        position: relative;
+        margin: 0;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .entry-list {
+        position: relative;
+        display: grid;
+        gap: 9px;
+        margin: 18px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .entry-list li {
+        display: grid;
+        grid-template-columns: 8px minmax(0, 1fr) auto;
+        gap: 11px;
+        align-items: start;
+        padding: 11px 12px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: var(--surface);
+      }
+
+      .entry-dot {
+        width: 7px;
+        height: 7px;
+        margin-top: 7px;
+        border-radius: 50%;
+        background: var(--brand);
+      }
+
+      .entry-dot.decision {
+        background: var(--coral);
+      }
+
+      .entry-dot.todo {
+        background: var(--gold);
+      }
+
+      .entry-dot.link {
+        background: var(--blue);
+      }
+
+      .entry-list strong {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .entry-list p {
+        margin: 2px 0 0;
+        overflow: hidden;
+        color: var(--ink-soft);
+        font-size: 11.5px;
+        line-height: 1.55;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .entry-list code {
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+      }
+
+      .scope-foot {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-size: 9px;
+      }
+
+      .scope-card figcaption {
+        position: relative;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 10px;
+        text-align: right;
+      }
+
+      .band {
+        padding: 26px 0;
+        border-block: 1px solid rgba(195, 182, 156, 0.5);
+        background: rgba(255, 253, 247, 0.36);
+      }
+
+      .band-inner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      .band p {
+        margin: 0;
+        color: var(--ink-soft);
+        font-size: 13px;
+      }
+
+      .band strong {
+        color: var(--brand-deep);
+      }
+
+      .band-code {
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-size: 11px;
+      }
+
+      .section {
+        padding: 88px 0;
+        scroll-margin-top: 78px;
+      }
+
+      .section-head {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+        gap: 42px;
+        align-items: end;
+        margin-bottom: 38px;
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: clamp(34px, 4.4vw, 54px);
+        font-weight: 600;
+        letter-spacing: -0.035em;
+        line-height: 1.18;
+      }
+
+      .section-head p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.85;
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .feature {
+        position: relative;
+        overflow: hidden;
+        padding: 22px 20px 24px;
+        border: 1px solid var(--line);
+        border-radius: 19px;
+        background: var(--surface);
+        box-shadow: 0 4px 16px rgba(54, 45, 31, 0.035);
+      }
+
+      .feature::after {
+        content: attr(data-index);
+        position: absolute;
+        right: 14px;
+        top: 9px;
+        color: rgba(29, 42, 37, 0.07);
+        font-family: var(--font-display);
+        font-size: 54px;
+        line-height: 1;
+      }
+
+      .feature-tag {
+        display: inline-block;
+        margin-bottom: 15px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand-deep);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      .feature:nth-child(2) .feature-tag {
+        background: var(--coral-soft);
+        color: #8e3d20;
+      }
+
+      .feature:nth-child(3) .feature-tag {
+        background: var(--gold-soft);
+        color: #76500f;
+      }
+
+      .feature:nth-child(4) .feature-tag {
+        background: var(--blue-soft);
+        color: #2b547a;
+      }
+
+      .feature h3 {
+        position: relative;
+        margin: 0 0 9px;
+        font-family: var(--font-display);
+        font-size: 20px;
+      }
+
+      .feature p {
+        position: relative;
+        margin: 0;
+        color: var(--muted);
+        font-size: 12.5px;
+        line-height: 1.75;
+      }
+
+      .architecture {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr auto 1fr;
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .node {
+        padding: 24px 22px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--surface);
+      }
+
+      .node-label {
+        display: block;
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .node h3 {
+        margin: 9px 0 7px;
+        font-family: var(--font-display);
+        font-size: 21px;
+      }
+
+      .node p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.7;
+      }
+
+      .node-key {
+        display: block;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px dashed var(--line);
+        color: var(--ink-soft);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        overflow-wrap: anywhere;
+      }
+
+      .node-arrow {
+        display: grid;
+        place-items: center;
+        width: 38px;
+        color: var(--line-strong);
+        font-size: 20px;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        gap: 18px;
+        margin-top: 18px;
+      }
+
+      .panel {
+        padding: 26px;
+        border: 1px solid var(--line);
+        border-radius: 21px;
+        background: var(--surface);
+      }
+
+      .panel h3 {
+        margin: 0 0 14px;
+        font-family: var(--font-display);
+        font-size: 22px;
+      }
+
+      .panel p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.8;
+      }
+
+      .map-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+
+      .map-table th,
+      .map-table td {
+        padding: 10px 9px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .map-table th {
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .map-table td:first-child {
+        font-weight: 700;
+      }
+
+      .map-table code {
+        color: var(--brand-deep);
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        overflow-wrap: anywhere;
+      }
+
+      .map-table tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .callout {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 16px;
+        margin-top: 18px;
+        padding: 20px 22px;
+        border: 1px solid rgba(201, 95, 58, 0.28);
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(247, 225, 215, 0.65), rgba(255, 253, 247, 0.7));
+      }
+
+      .callout-mark {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: var(--coral);
+        color: #fff;
+        font-family: var(--font-mono);
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .callout h3 {
+        margin: 0 0 4px;
+        font-family: var(--font-display);
+        font-size: 18px;
+      }
+
+      .callout p {
+        margin: 0;
+        color: var(--ink-soft);
+        font-size: 12.5px;
+        line-height: 1.75;
+      }
+
+      .code-shell {
+        margin-top: 18px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        background: #12231e;
+        box-shadow: 0 18px 40px rgba(18, 35, 30, 0.17);
+      }
+
+      .code-bar {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        color: rgba(255, 253, 247, 0.55);
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.08em;
+      }
+
+      .code-bar span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.18);
+      }
+
+      .code-bar span:first-child {
+        background: #c95f3a;
+      }
+
+      .code-bar span:nth-child(2) {
+        background: #c19a45;
+      }
+
+      .code-bar span:nth-child(3) {
+        background: #3f9a75;
+      }
+
+      .code-bar em {
+        margin-left: 7px;
+        font-style: normal;
+      }
+
+      pre {
+        margin: 0;
+        padding: 19px 22px 22px;
+        overflow-x: auto;
+        color: #dcece6;
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        line-height: 1.8;
+        tab-size: 2;
+      }
+
+      .code-dim {
+        color: #7f9b91;
+      }
+
+      .code-accent {
+        color: #f0b48f;
+      }
+
+      .code-key {
+        color: #9ed3c1;
+      }
+
+      .evidence {
+        display: grid;
+        grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+        gap: 18px;
+      }
+
+      .evidence-main {
+        position: relative;
+        overflow: hidden;
+        padding: 28px;
+        border-radius: 24px;
+        background: linear-gradient(150deg, #0f4a40, #146b5b 55%, #1b7a66);
+        color: #f7f3e8;
+        box-shadow: 0 24px 55px rgba(20, 107, 91, 0.23);
+      }
+
+      .evidence-main::after {
+        content: "";
+        position: absolute;
+        right: -70px;
+        bottom: -90px;
+        width: 250px;
+        height: 250px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 50%;
+      }
+
+      .evidence-main .eyebrow {
+        color: #b7dccf;
+      }
+
+      .evidence-main h3 {
+        position: relative;
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 29px;
+        line-height: 1.3;
+      }
+
+      .evidence-main p {
+        position: relative;
+        margin: 12px 0 0;
+        color: rgba(247, 243, 232, 0.76);
+        font-size: 12.5px;
+        line-height: 1.8;
+      }
+
+      .evidence-command {
+        position: relative;
+        margin-top: 20px;
+        padding: 13px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 12px;
+        background: rgba(5, 31, 26, 0.34);
+        color: #e5f3ed;
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        line-height: 1.7;
+        overflow-wrap: anywhere;
+      }
+
+      .evidence-note {
+        position: relative;
+        margin-top: 14px;
+        color: rgba(247, 243, 232, 0.58);
+        font-size: 10.5px;
+      }
+
+      .checks {
+        display: grid;
+        gap: 9px;
+      }
+
+      .check {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+      }
+
+      .check strong {
+        display: block;
+        font-size: 12.5px;
+      }
+
+      .check small {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 10.5px;
+        line-height: 1.5;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        white-space: nowrap;
+      }
+
+      .status::before {
+        content: "";
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .status.pass {
+        background: var(--ok-soft);
+        color: var(--ok);
+      }
+
+      .status.pending {
+        background: var(--warn-soft);
+        color: var(--warn);
+      }
+
+      .status.unrun {
+        background: #ece8dd;
+        color: var(--muted);
+      }
+
+      .evidence-foot {
+        grid-column: 1 / -1;
+        margin: 0;
+        padding: 14px 18px;
+        border-left: 3px solid var(--gold);
+        border-radius: 0 10px 10px 0;
+        background: rgba(244, 233, 207, 0.54);
+        color: var(--ink-soft);
+        font-size: 11.5px;
+        line-height: 1.75;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        counter-reset: step;
+      }
+
+      .step {
+        position: relative;
+        padding: 23px 23px 22px;
+        border: 1px solid var(--line);
+        border-radius: 19px;
+        background: var(--surface);
+      }
+
+      .step::before {
+        counter-increment: step;
+        content: "0" counter(step);
+        display: inline-block;
+        margin-bottom: 11px;
+        color: var(--coral);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      .step h3 {
+        margin: 0 0 6px;
+        font-family: var(--font-display);
+        font-size: 19px;
+      }
+
+      .step p {
+        margin: 0 0 13px;
+        color: var(--muted);
+        font-size: 11.5px;
+        line-height: 1.7;
+      }
+
+      .step pre {
+        padding: 13px 14px;
+        border-radius: 11px;
+        font-size: 10px;
+        line-height: 1.75;
+      }
+
+      .run-note {
+        margin: 18px 0 0;
+        padding: 16px 18px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: var(--surface-soft);
+        color: var(--muted);
+        font-size: 11.5px;
+        line-height: 1.8;
+      }
+
+      .run-note strong {
+        color: var(--ink);
+      }
+
+      .source-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 26px;
+        align-items: center;
+        margin-top: 18px;
+        padding: 28px;
+        border: 1px solid var(--line-strong);
+        border-radius: 22px;
+        background:
+          linear-gradient(135deg, rgba(220, 236, 230, 0.55), rgba(255, 253, 247, 0.8));
+      }
+
+      .source-card h3 {
+        margin: 0 0 5px;
+        font-family: var(--font-display);
+        font-size: 24px;
+      }
+
+      .source-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.7;
+      }
+
+      .source-url {
+        display: block;
+        margin-top: 9px;
+        color: var(--brand-deep);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        overflow-wrap: anywhere;
+      }
+
+      footer {
+        margin-top: 80px;
+        padding: 30px 0 40px;
+        border-top: 1px solid rgba(195, 182, 156, 0.55);
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .footer-inner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .footer-inner p {
+        margin: 0;
+      }
+
+      .footer-meta {
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.04em;
+      }
+
+      @media (max-width: 980px) {
+        .hero {
+          padding: 62px 0 54px;
+        }
+
+        .hero-grid {
+          grid-template-columns: 1fr;
+          gap: 42px;
+        }
+
+        .scope-card {
+          max-width: 520px;
+          transform: none;
+        }
+
+        .section-head,
+        .evidence {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+
+        .feature-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .architecture {
+          grid-template-columns: 1fr;
+        }
+
+        .node-arrow {
+          width: 100%;
+          height: 24px;
+          transform: rotate(90deg);
+        }
+
+        .split {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .wrap {
+          width: min(100% - 30px, 1160px);
+        }
+
+        .nav-links {
+          display: none;
+        }
+
+        .nav-cta {
+          margin-left: auto;
+        }
+
+        .hero h1 {
+          font-size: clamp(46px, 14vw, 66px);
+        }
+
+        .hero-lead {
+          font-size: 15px;
+        }
+
+        .section {
+          padding: 62px 0;
+        }
+
+        .feature-grid,
+        .steps {
+          grid-template-columns: 1fr;
+        }
+
+        .scope-card {
+          padding: 20px;
+        }
+
+        .source-card {
+          grid-template-columns: 1fr;
+        }
+
+        .check {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+
+        .status {
+          justify-self: start;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <a class="brand" href="#top" aria-label="实验续航首页">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-text">
+            <strong>实验续航</strong>
+            <small>RESEARCH RELAY</small>
+          </span>
+        </a>
+        <nav class="nav-links" aria-label="页面导航">
+          <a href="#flow">工作流</a>
+          <a href="#integration">PowerContext</a>
+          <a href="#evidence">验证记录</a>
+          <a href="#run">本地运行</a>
+          <a
+            class="nav-cta"
+            href="https://github.com/DvD-xjtu/26-OB-competition/tree/ecosystem-six-solutions/qoder"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub 源码
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section id="top" class="hero">
+        <div class="wrap hero-grid">
+          <div>
+            <p class="eyebrow">OceanBase PowerContext · Research Workflow</p>
+            <h1>让研究进展，<br /><em>接得上。</em></h1>
+            <p class="hero-lead">
+              实验续航是一个面向科研过程的中文工作台。研究任务、实验观察、关键决策、
+              下一步待办与原始资料链接，全部通过
+              <strong>真实 PowerContext HTTP API</strong> 保存；刷新页面、重启应用或开启新会话后，
+              研究上下文仍然可以被重新读取、检索和交接。
+            </p>
+            <div class="badges" aria-label="项目特性">
+              <span class="badge">真实 HTTP API</span>
+              <span class="badge">一任务一 Scope</span>
+              <span class="badge">Memory + Source 引用</span>
+              <span class="badge accent">无本地降级</span>
+            </div>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="#run">查看本地运行方式</a>
+              <a class="btn btn-ghost" href="#evidence">查看验证记录</a>
+            </div>
+            <p class="hero-note">
+              <span aria-hidden="true">※</span>
+              <span>
+                <strong>这是静态项目展示页。</strong>
+                本页不包含在线后端，也不提供可交互的托管演示。要读取或写入研究数据，
+                需要在本地启动 Node 应用并连接同机运行的 PowerContext。
+              </span>
+            </p>
+          </div>
+
+          <figure class="scope-card" aria-label="研究数据结构示意">
+            <div class="scope-head">
+              <span class="scope-kicker">POWERCONTEXT SCOPE</span>
+              <span class="scope-id">scope_01</span>
+            </div>
+            <h3>钙钛矿薄膜稳定性验证</h3>
+            <p class="scope-sub">[实验续航] 钙钛矿薄膜稳定性验证</p>
+            <ul class="entry-list">
+              <li>
+                <span class="entry-dot" aria-hidden="true"></span>
+                <div>
+                  <strong>实验观察</strong>
+                  <p>第 3 组在 37.2°C 下反应 24h，产率 68%。</p>
+                </div>
+                <code>Memory</code>
+              </li>
+              <li>
+                <span class="entry-dot decision" aria-hidden="true"></span>
+                <div>
+                  <strong>研究决策</strong>
+                  <p>先复现异常组，暂不扩大样本量。</p>
+                </div>
+                <code>Memory</code>
+              </li>
+              <li>
+                <span class="entry-dot todo" aria-hidden="true"></span>
+                <div>
+                  <strong>下一步待办</strong>
+                  <p>补齐三次重复实验并完成统计分析。</p>
+                </div>
+                <code>Memory</code>
+              </li>
+              <li>
+                <span class="entry-dot link" aria-hidden="true"></span>
+                <div>
+                  <strong>原始资料</strong>
+                  <p>公开数据集与实验记录链接。</p>
+                </div>
+                <code>Source</code>
+              </li>
+            </ul>
+            <div class="scope-foot">
+              <span>memory_ref · entry_id</span>
+              <span>rr-link-… · digest</span>
+            </div>
+            <figcaption>数据结构示意，非产品截图</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <div class="band">
+        <div class="wrap band-inner">
+          <p>
+            <strong>设计原则：</strong>研究数据只存在于 PowerContext，应用目录内没有研究数据副本。
+          </p>
+          <span class="band-code">storage.mode = "powercontext-http" · localFallback = false</span>
+        </div>
+      </div>
+
+      <section id="flow" class="section">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>不是聊天记录，<br />是可交接的研究状态。</h2>
+            <p>
+              研究过程经常在“实验做完”和“下次继续”之间断裂。实验续航把进展拆成四类可检索记录，
+              在交接时附上 Memory 引用与 Source 证据，让下一次实验从可核验的来源继续，而不是依赖回忆。
+            </p>
+          </div>
+
+          <div class="feature-grid">
+            <article class="feature" data-index="01">
+              <span class="feature-tag">观察</span>
+              <h3>记录实验现象</h3>
+              <p>测量值、异常、环境条件与重复次数写入 Memory，之后可被全文检索。</p>
+            </article>
+            <article class="feature" data-index="02">
+              <span class="feature-tag">决策</span>
+              <h3>留下取舍依据</h3>
+              <p>为什么暂停、为什么换方案、影响范围是什么，交接时可以逐条复核。</p>
+            </article>
+            <article class="feature" data-index="03">
+              <span class="feature-tag">待办</span>
+              <h3>写成下一步动作</h3>
+              <p>把“继续研究”拆成可执行动作，新会话打开后可以直接接着做。</p>
+            </article>
+            <article class="feature" data-index="04">
+              <span class="feature-tag">资料</span>
+              <h3>链接带来源证据</h3>
+              <p>链接先写入 Memory，再以 Source 保存；摘要同时列出 Source ID 与摘要值。</p>
+            </article>
+          </div>
+
+          <div class="split">
+            <div class="panel">
+              <h3>三层链路</h3>
+              <div class="architecture">
+                <div class="node">
+                  <span class="node-label">Client</span>
+                  <h3>浏览器界面</h3>
+                  <p>原生 DOM，无框架；刷新后通过哈希路由重新读取任务。</p>
+                  <span class="node-key">/api/*</span>
+                </div>
+                <div class="node-arrow" aria-hidden="true">→</div>
+                <div class="node">
+                  <span class="node-label">Server</span>
+                  <h3>Node.js</h3>
+                  <p>校验、Scope 隔离、Source 取证与交接摘要编排。</p>
+                  <span class="node-key">node:http · 零第三方运行时依赖</span>
+                </div>
+                <div class="node-arrow" aria-hidden="true">→</div>
+                <div class="node">
+                  <span class="node-label">Memory Layer</span>
+                  <h3>PowerContext</h3>
+                  <p>Scope、Memory、Source 与 Context prepare 的真实持久化。</p>
+                  <span class="node-key">localhost:8000</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <h3>数据映射</h3>
+              <table class="map-table">
+                <thead>
+                  <tr>
+                    <th>应用概念</th>
+                    <th>PowerContext 资源</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>研究任务</td>
+                    <td><code>Scope</code>，标题前缀 <code>[实验续航]</code></td>
+                  </tr>
+                  <tr>
+                    <td>四类记录</td>
+                    <td><code>Memory</code>，类型与时间编码进 <code>kind</code></td>
+                  </tr>
+                  <tr>
+                    <td>原始资料</td>
+                    <td><code>Memory</code> + <code>Source</code> 证据</td>
+                  </tr>
+                  <tr>
+                    <td>检索</td>
+                    <td><code>POST /v1/memory/search</code></td>
+                  </tr>
+                  <tr>
+                    <td>交接</td>
+                    <td>Memory 列表 + Sources + <code>/v1/context/prepare</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="integration" class="section">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>真实 PowerContext，<br />不是模拟后端。</h2>
+            <p>
+              主流程不经过本地 JSON 或 mock 服务：任务来自 Scope 列表，记录写入 Memory，
+              链接额外写入 Source，搜索调用 PowerContext 检索，交接读取 Memory、Sources 与准备上下文。
+            </p>
+          </div>
+
+          <div class="split">
+            <div class="panel">
+              <h3>应用实际调用的接口</h3>
+              <table class="map-table">
+                <tbody>
+                  <tr>
+                    <td>Scope</td>
+                    <td><code>GET /v1/scopes</code> · <code>POST /v1/scopes</code> · <code>GET /v1/scopes/{id}</code></td>
+                  </tr>
+                  <tr>
+                    <td>Memory</td>
+                    <td><code>POST /v1/memory/remember</code> · <code>POST /v1/memory/entries/list</code></td>
+                  </tr>
+                  <tr>
+                    <td>检索</td>
+                    <td><code>POST /v1/memory/search</code></td>
+                  </tr>
+                  <tr>
+                    <td>Source</td>
+                    <td><code>POST /v1/sources/content</code> · <code>GET /v1/scopes/{id}/sources</code></td>
+                  </tr>
+                  <tr>
+                    <td>上下文</td>
+                    <td><code>POST /v1/context/prepare</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="panel">
+              <h3>故障时就失败，不悄悄降级</h3>
+              <p>
+                PowerContext 不可达时，界面显示离线状态并禁用写入；API 返回
+                <code>503 powercontext_unavailable</code>，错误详情明确声明
+                <code>noLocalFallback: true</code>。应用不会在本地生成一份“看起来还在工作”的数据副本。
+              </p>
+              <div class="callout">
+                <span class="callout-mark" aria-hidden="true">!</span>
+                <div>
+                  <h3>隔离边界</h3>
+                  <p>
+                    每个研究任务对应一个 Scope。应用在每个任务请求中校验标题前缀，
+                    拒绝访问不属于实验续航的 Scope。Scope 是数据分区键，不替代多租户鉴权。
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="code-shell">
+            <div class="code-bar">
+              <span></span><span></span><span></span>
+              <em>错误语义 · 无本地降级</em>
+            </div>
+            <pre><code>HTTP/1.1 <span class="code-accent">503</span> Service Unavailable
+Content-Type: application/json
+
+{
+  <span class="code-key">"error"</span>: {
+    <span class="code-key">"code"</span>: <span class="code-accent">"powercontext_unavailable"</span>,
+    <span class="code-key">"message"</span>: <span class="code-accent">"无法连接 PowerContext。本应用不会使用本地 JSON 或模拟数据替代。"</span>,
+    <span class="code-key">"details"</span>: { <span class="code-key">"noLocalFallback"</span>: true }
+  }
+}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="evidence" class="section">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>本地验证记录，<br />按实际结果说话。</h2>
+            <p>
+              以下结果来自本机真实 PowerContext 环境，不是托管演示或编造指标。
+              单元、离线、真实集成及端到端验证均已通过，原始日志见仓库 evidence/validation.json。
+            </p>
+          </div>
+
+          <div class="evidence">
+            <div class="evidence-main">
+              <p class="eyebrow">Local Integration Evidence</p>
+              <h3>真实服务集成测试<br />已通过</h3>
+              <p>
+                在本机启动的 PowerContext（<code>localhost:8000</code>）上，
+                集成测试覆盖双任务隔离、四类记录、Source 取证、检索、交接、
+                非实验续航 Scope 拒访与重启后重新读取。
+              </p>
+              <div class="evidence-command">
+                RUN_POWERCONTEXT_INTEGRATION=1 npm run test:integration
+                <br /><span class="code-dim"># local PowerContext · passed</span>
+              </div>
+              <p class="evidence-note">
+                测试会在真实 PowerContext 中创建带唯一后缀的 Scope；本页不展示伪造的截图或用户数据。
+              </p>
+            </div>
+
+            <div class="checks">
+              <div class="check">
+                <div>
+                  <strong>真实 PowerContext 集成测试</strong>
+                  <small>localhost:8000 · Scope / Memory / Source / Search / Prepare</small>
+                </div>
+                <span class="status pass">PASSED</span>
+              </div>
+              <div class="check">
+                <div>
+                  <strong>单元测试 fixture</strong>
+                  <small>已按官方契约改为 memory_ref:{ family, artifact_id, revision }；21 项单元测试通过</small>
+                </div>
+                <span class="status pass">PASSED</span>
+              </div>
+              <div class="check">
+                <div>
+                  <strong>离线语义脚本</strong>
+                  <small>验证 503、noLocalFallback 与静态页面安全头</small>
+                </div>
+                <span class="status pass">PASSED</span>
+              </div>
+              <div class="check">
+                <div>
+                  <strong>端到端脚本</strong>
+                  <small>真实服务下逐步验证完整主流程</small>
+                </div>
+                <span class="status pass">PASSED</span>
+              </div>
+              <div class="check">
+                <div>
+                  <strong>浏览器手工走查</strong>
+                  <small>桌面任务读取及交接摘要已验证；移动端尚待验证</small>
+                </div>
+                <span class="status pending">DESKTOP VERIFIED</span>
+              </div>
+            </div>
+
+            <p class="evidence-foot">
+              <strong>关于单元测试：</strong>
+              首次运行出现 3 个失败，原因是测试 fixture 使用了扁平的
+              <code>artifact_id / revision</code>，而官方与真实 API 返回
+              <code>memory_ref: { family: "memory", artifact_id, revision }</code>。
+              应用实现 <code>normalizeEntry</code> 本身正确；测试 fixture 已修正，
+              断言未放宽，重跑 21 项全部通过。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="run" class="section">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>在本地运行它。</h2>
+            <p>
+              应用与 PowerContext 都运行在你的机器上。Node 服务只代理请求，
+              浏览器不会接触 PowerContext Bearer 令牌；研究数据也不会写入应用目录。
+            </p>
+          </div>
+
+          <div class="steps">
+            <article class="step">
+              <h3>准备 PowerContext</h3>
+              <p>使用 Python 3.11+；若 3.14 缺少兼容 wheel，请改用 3.12 或 3.13。</p>
+              <pre><code>python -m venv .venv
+source .venv/Scripts/activate
+python -m pip install -r requirements-powercontext.txt</code></pre>
+            </article>
+            <article class="step">
+              <h3>启动真实服务</h3>
+              <p>默认端点为 <code>http://127.0.0.1:8000</code>。保持该进程运行。</p>
+              <pre><code>powercontext server run
+curl --fail http://127.0.0.1:8000/health/live</code></pre>
+            </article>
+            <article class="step">
+              <h3>配置实验续航</h3>
+              <p>复制示例配置；不要把真实令牌提交到仓库。</p>
+              <pre><code>cp .env.example .env
+# POWERCONTEXT_URL=http://127.0.0.1:8000
+# POWERCONTEXT_TOKEN=  # 可选</code></pre>
+            </article>
+            <article class="step">
+              <h3>启动本地界面</h3>
+              <p>零第三方 npm 运行时依赖。打开终端提示的本地地址。</p>
+              <pre><code>npm ci
+npm start
+# http://127.0.0.1:4173</code></pre>
+            </article>
+          </div>
+
+          <p class="run-note">
+            <strong>注意：</strong>本页只解释项目与本地运行方式，不提供在线 API。
+            如果你的 <code>localhost:8000</code> 没有运行 PowerContext，应用会明确显示离线并拒绝写入，
+            不会切换到本地模拟数据。完整的测试命令、安全说明与限制见仓库中的
+            <code>README.md</code> 与 <code>DEVELOPMENT.md</code>。
+          </p>
+
+          <div class="source-card">
+            <div>
+              <h3>查看完整源码</h3>
+              <p>应用、测试、验证脚本、开发记录与可复现命令都在仓库的 qoder 目录中。</p>
+              <a
+                class="source-url"
+                href="https://github.com/DvD-xjtu/26-OB-competition/tree/ecosystem-six-solutions/qoder"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                github.com/DvD-xjtu/26-OB-competition/tree/ecosystem-six-solutions/qoder
+              </a>
+            </div>
+            <a
+              class="btn btn-primary"
+              href="https://github.com/DvD-xjtu/26-OB-competition/tree/ecosystem-six-solutions/qoder"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              打开 GitHub 源码
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap footer-inner">
+        <p>实验续航 / Research Relay · 以真实 PowerContext 为记忆层的研究交接工作台</p>
+        <p class="footer-meta">静态展示页 · 无远程统计 · 无在线后端 · 2026-11-03</p>
+      </div>
+    </footer>
+  </body>
+</html>
