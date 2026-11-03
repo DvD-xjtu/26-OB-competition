@@ -17,6 +17,9 @@ ascii_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !@
 documents += [''.join(rng.choices(ascii_chars, k=rng.randrange(1, 2000))) for _ in range(100)]
 documents += ['hello\x00WORLD trailing', 'A' * 9000, 'UPPER lower MiXeD', '\t\r\n...---___']
 documents += [('中文数据库 OceanBase 123 公斤。' * 1500), ('abcXYZ +test ' * 2000)]
+# Mixed ASCII/CJK runs and segment boundaries exercise character traversal.
+documents += [text * repeats for text in ['南京市长江大桥 研究生命起源。', 'abc 123 !!! 中文 人际关系。']
+              for repeats in [1, 20, 500]]
 connection = pymysql.connect(unix_socket=os.environ['FTS_TEST_SOCKET'], user='root', charset='utf8mb4')
 results = []
 with connection.cursor() as cursor:
@@ -31,6 +34,14 @@ with connection.cursor() as cursor:
                 if isinstance(value, list):
                     return sorted((canonical(item) for item in value), key=lambda item: json.dumps(item, sort_keys=True))
                 return value
+            results.append(canonical(json.loads(value)) if value else value)
+    ascii_document = ''.join(chr(byte) for byte in range(128)) + ' 中文 ABC １２３'
+    for collation in ['utf8mb4_bin', 'utf8mb4_general_ci', 'utf8mb4_unicode_ci']:
+        for mode in ['smart', 'max_word']:
+            options = json.dumps([{'output': 'all'}, {'additional_args': [{'ik_mode': mode}]}])
+            cursor.execute('select tokenize(convert(%s using utf8mb4) collate ' + collation + ', %s, %s)',
+                           (ascii_document, 'ik', options))
+            value = cursor.fetchone()[0]
             results.append(canonical(json.loads(value)) if value else value)
 from pathlib import Path
 reference = Path(sys.argv[2])
