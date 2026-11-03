@@ -1,0 +1,3 @@
+# Preserve the exact bytes referenced by the recorded verification hashes.
+minimax/evidence/** -text
+minimax/seekdb-module/** -text
