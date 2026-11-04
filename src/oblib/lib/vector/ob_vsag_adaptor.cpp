@@ -131,6 +131,25 @@ static inline void ob_vsag_trace(const char *fn, const void *h, long a, long b) 
   (void)fn; (void)h; (void)a; (void)b;
 #endif
 }
+// Timing records reuse the developer trace sink. Use monotonic wall time
+// around the existing calls, without adding a device synchronization.
+static inline int64_t ob_cuvs_timing_start() {
+#ifdef OB_BUILD_CUVS_TRACE
+  const char *enabled = ::getenv("OB_CUVS_TIMING");
+  return enabled != nullptr && enabled[0] == '1'
+      ? ObTimeUtility::current_monotonic_time() : 0;
+#else
+  return 0;
+#endif
+}
+static inline int64_t ob_cuvs_timing_elapsed(int64_t start_us) {
+  return start_us == 0 ? -1 : ObTimeUtility::current_monotonic_time() - start_us;
+}
+static inline void ob_cuvs_timing(const char *phase, const void *key, int64_t start_us, long count) {
+  if (start_us != 0) {
+    ob_vsag_trace(phase, key, ob_cuvs_timing_elapsed(start_us), count);
+  }
+}
 static std::shared_ptr<void> ob_cuvs_wrap(void *handle) {
   if (handle == nullptr) { return std::shared_ptr<void>(); }
   return std::shared_ptr<void>(handle, [](void *h) { seekdb_cuvs_free(h); });
@@ -197,6 +216,7 @@ struct ObCuvsJob {
   ObCuvsEntry *ent; const float *query; int64_t topk; int dim; size_t n;
   bool need_build; std::vector<unsigned> *off; std::vector<float> *dst;
   int rc_; bool built_;
+  int64_t search_us_ = -1;
 };
 // Runs on a dedicated large-stack pthread: cuVS CAGRA build/search overflow the
 // small (~1.5MB) OB worker-thread stack.
@@ -215,8 +235,10 @@ static void *ob_cuvs_job(void *arg) {
   // caller falls back to CPU VSAG (which is always fresh). This also gives the
   // desired split: streaming delta -> VSAG, stable snapshot -> cuVS.
   if (j->ent->bridge_ != nullptr && j->ent->built_n_ == j->n) {
+    const int64_t search_start = ob_cuvs_timing_start();
     j->rc_ = seekdb_cuvs_search(j->ent->bridge_.get(), j->query, 1, j->topk,
                                 j->off->data(), j->dst->data());
+    j->search_us_ = ob_cuvs_timing_elapsed(search_start);
   }
   return nullptr;
 }
@@ -282,11 +304,16 @@ static bool ob_cuvs_try_search(void *key, vsag::Allocator *alloc,
       (n >= OB_CUVS_MIN_PTS && (ent->bridge_ == nullptr || n >= ent->built_n_ * 2));
   std::vector<unsigned> off(topk);
   std::vector<float> dst(topk);
+  const int64_t worker_start = ob_cuvs_timing_start();
   ObCuvsJob job{ent, query, topk, static_cast<int>(ent->dim_), n, need_build, &off, &dst, -1, false};
   pthread_t tid; pthread_attr_t attr; pthread_attr_init(&attr);
   pthread_attr_setstacksize(&attr, 32UL * 1024 * 1024);
   if (pthread_create(&tid, &attr, ob_cuvs_job, &job) == 0) { pthread_join(tid, nullptr); }
   pthread_attr_destroy(&attr);
+  ob_cuvs_timing("query_worker_us", key, worker_start, static_cast<long>(topk));
+  if (job.search_us_ >= 0) {
+    ob_vsag_trace("query_bridge_us", key, job.search_us_, static_cast<long>(topk));
+  }
   if (job.built_) { ob_vsag_trace("cuvs_build", key, static_cast<long>(ent->dim_), static_cast<long>(n)); }
   if (ent->bridge_ == nullptr || job.rc_ != 0) { return false; }
   // Post-filter: cuVS returned UNFILTERED top-k. Apply the query's row filter
@@ -394,8 +421,10 @@ static bool ob_cuvs_serialize(void *key, std::ostream &out, int &ret) {
   const int64_t start_us = ObTimeUtility::current_time();
   bool built = false;
   if (ent->bridge_ == nullptr || ent->built_n_ != n) {
+    const int64_t build_start = ob_cuvs_timing_start();
     std::shared_ptr<void> nb = ob_cuvs_build_big_stack(ent->buf_vecs_.data(),
                                                        static_cast<long>(n), ent->dim_);
+    ob_cuvs_timing("ddl_build_call_us", key, build_start, static_cast<long>(n));
     if (nb == nullptr) {
       ret = OB_ERR_VSAG_RETURN_ERROR;
       LOG_WARN("[OBVSAG][cuVS] GPU CAGRA build failed during snapshot serialize",
@@ -405,6 +434,7 @@ static bool ob_cuvs_serialize(void *key, std::ostream &out, int &ret) {
     ent->bridge_ = nb; ent->built_n_ = n; ent->ids_ = ent->buf_ids_;
     built = true;
   }
+  const int64_t graph_start = ob_cuvs_timing_start();
   ObCuvsSnapshotFile graph;
   ObCuvsSnapshotJob job{graph.path_, ent->bridge_.get(), static_cast<long>(n), ent->dim_, false, -1};
   if (graph.file_ == nullptr || !ob_cuvs_snapshot_big_stack(job) ||
@@ -414,6 +444,8 @@ static bool ob_cuvs_serialize(void *key, std::ostream &out, int &ret) {
   }
   const uint64_t graph_bytes = static_cast<uint64_t>(::ftello(graph.file_));
   ::rewind(graph.file_);
+  ob_cuvs_timing("ddl_graph_write_us", key, graph_start, static_cast<long>(graph_bytes));
+  const int64_t output_start = ob_cuvs_timing_start();
   const int64_t build_us = ObTimeUtility::current_time() - start_us;
   const int32_t dim32 = ent->dim_;
   const int32_t reserved = 0;
@@ -439,6 +471,7 @@ static bool ob_cuvs_serialize(void *key, std::ostream &out, int &ret) {
     }
     remaining -= bytes;
   }
+  ob_cuvs_timing("ddl_snapshot_out_us", key, output_start, static_cast<long>(graph_bytes));
   LOG_INFO("[OBVSAG][cuVS] serialized GPU CAGRA snapshot", KP(key), K(n), K(dim32),
            K(built), K(build_us), K(graph_bytes));
   return true;
@@ -464,6 +497,7 @@ static int ob_cuvs_deserialize(void *key, int expected_dim, std::istream &in) {
              K(expected_dim), K(n64));
   } else {
     const size_t n = static_cast<size_t>(n64);
+    const int64_t vectors_start = ob_cuvs_timing_start();
     ObCuvsEntry *ent = new ObCuvsEntry();
     ent->dim_ = dim32;
     ent->buf_ids_.resize(n);
@@ -474,6 +508,8 @@ static int ob_cuvs_deserialize(void *key, int expected_dim, std::istream &in) {
       ret = OB_ERR_UNEXPECTED;
       LOG_WARN("[OBVSAG][cuVS] truncated snapshot payload", K(ret), KP(key), K(n64));
     } else {
+      ob_cuvs_timing("load_vectors_us", key, vectors_start, static_cast<long>(n));
+      const int64_t staging_start = ob_cuvs_timing_start();
       ObCuvsSnapshotFile graph;
       std::vector<char> chunk(65536);
       uint64_t remaining = graph_bytes;
@@ -485,8 +521,14 @@ static int ob_cuvs_deserialize(void *key, int expected_dim, std::istream &in) {
         remaining -= bytes;
       }
       ObCuvsSnapshotJob job{graph.path_, nullptr, static_cast<long>(n), dim32, true, -1};
-      if (graph.file_ == nullptr || remaining != 0 || ::fflush(graph.file_) != 0 ||
-          !ob_cuvs_snapshot_big_stack(job)) {
+      const bool staged = graph.file_ != nullptr && remaining == 0 && ::fflush(graph.file_) == 0;
+      ob_cuvs_timing("load_graph_stage_us", key, staging_start, static_cast<long>(graph_bytes));
+      const int64_t load_start = ob_cuvs_timing_start();
+      const bool loaded = staged && ob_cuvs_snapshot_big_stack(job);
+      if (staged) {
+        ob_cuvs_timing("load_graph_call_us", key, load_start, static_cast<long>(graph_bytes));
+      }
+      if (!loaded) {
         delete ent;
         ret = OB_ERR_VSAG_RETURN_ERROR;
         LOG_WARN("[OBVSAG][cuVS] failed to load CAGRA graph from snapshot", K(ret), KP(key), K(n64));
