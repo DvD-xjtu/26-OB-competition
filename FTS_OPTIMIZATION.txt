@@ -249,3 +249,88 @@ matched. CN/BENG means improved by 18.31%/12.96%; mixed mean regressed
 1.92% and its two pairs disagreed. This variation is retained, and the
 platform result remains pending. The engine source is identical to the
 subsequent 347a3c562 cherry-pick; their differences are docs/tests only.
+
+The next index-writing change uses the already evaluated vector datum frame
+only when every expression is a batch result, the column count matches its
+row metadata and no caller requests StoredRow pointers. It reuses the same
+size and encoding methods as existing compact rows. Scalar, null expression
+and returned-pointer paths retain their previous writer. Three complete
+20,000-row ALTER statements invoked the new writer 1,602,048 / 1,361,328 /
+738,584 times, with zero calls to the previous scalar expression writer.
+
+In eight A/B/B/A/B/A/A/B groups on warmed, persistent same-data services,
+mean build time fell from 14.546 to 13.827 seconds and service CPU from
+17.180 to 15.398 seconds. Every adjacent pair used less CPU; one pair had
+2.34% higher elapsed time. All official hits, 27,104 ordered FTS rows and
+an independent 39,975-row covering-index result matched. These are local
+measurements with retained sample variation, not an official score.
+
+SMART arbitration can bypass its general conflict search when every token
+in a connected conflict group shares a real byte position. Only one can
+be selected, and the original singleton comparator identifies that word.
+All other groups keep the previous search. In the full Linux engine,
+20,000 official IK texts took 0.53948/0.51966 seconds before/after and
+20,000 different articles took 0.62110/0.60078 seconds; respective service
+CPU was 0.550/0.530 and 0.635/0.615 seconds. All 80,000 row digests,
+934 ordered SQL cases and 32,768 interval/mode comparisons matched.
+
+The platform returned 43.904/50 for ea3af2586. Build was
+4.854/3.726/2.223 s, IK/BENG TOKENIZE 0.0569/0.0326 ms and
+CN/BENG/mixed/LIMIT queries 0.4753/0.7129/0.5311/0.1140 ms.
+All four expected hit counts matched. This is the current official best.
+
+Kernel a9fd5636f also adds bounded, explicitly scoped IK lexical-span
+reuse. It retains one short input and at most 128 actual lexer spans per
+worker. The key includes session identity/id/creation time, users,
+database, parser version, effective collation, IK mode, immutable
+dictionary generation and every input byte. The epoch saturates rather
+than recycling. Ordinary parser clients, DDL and unknown scopes retain
+the original contract. Existing plugin parameter, iterator and descriptor
+layouts and virtual methods are unchanged. The scoped path is a separate
+nonvirtual entry of the actual builtin IK singleton.
+
+Only two completely successful encounters can admit an entry. Errors,
+warnings, partial iteration, unexpected spans and capacity/allocation
+limits fall back to normal lexing. Each parser copies a mature entry
+before any later yielding operation, and verifies TLS identity again
+after optional allocation. Arguments, dictionary/parser initialization,
+word-frequency grouping, stopwords, case handling, JSON construction and
+result packing still run on every evaluation. It reuses lexical spans
+across calls; it does not reuse the completed IK JSON output.
+
+Paired full Linux engines matched 306 prepared-statement/warning cases,
+52 boundary/collation/dynamic-expression checks and 80,000 per-row output
+digests. Four interleaved 20,000-row comparisons reduced repeated IK
+elapsed time 0.48515 to 0.32275 s and service CPU 0.495 to 0.325 s.
+Distinct IK elapsed time was 0.61517 to 0.57082 s; the unchanged distinct
+BENG control was 5.5% slower in these samples. Four independent sets of
+3,000 SQL calls had IK median 0.210072/0.179403 ms before/after. These
+local results are reported separately from a platform score.
+
+The production admission/replay methods passed ASan and UBSan, including
+private ownership, optional allocation failure, warning/worker changes,
+input mutation and every key dimension. Eight threads acquired 8,000
+unique dictionary generations; a near-overflow test remained saturated.
+The repository's ik_lexical_span_equivalence.py reproduces the SQL checks
+against the recorded control digests without a product test switch.
+
+The combined native Windows a9fd5636f build passed the original full
+benchmark with 8001/11000/7332/20 hits. Build was 7.819/6.030/3.697 s,
+IK/BENG TOKENIZE 0.3790/0.2721 ms, queries 1.8155/2.2529/1.8979/1.2327 ms
+and SQL-loop baseline 0.1526 ms. These local times include sample variation
+and do not establish a combined speedup or a platform full score.
+
+Native checks passed 36 DDL/DML, 34 LIMIT/plan, 4,844 batch/heap,
+208 collation/layout, 80 basic TOKENIZE, 934 IK boundary, 11,102 stopword,
+73 execution-state, 34 two-session MATCH, 165 independent aggregate,
+306 prepared/warning and 52 boundary/dynamic cases, plus 80,000 row digests.
+The new row digests were strictly compared with the independently built
+native 7764f1510 control, not derived from the candidate.
+
+The original character hash uses unsigned long, which has different
+widths on LLP64 and LP64. This changes hash-bucket iteration order and
+therefore the original JSON array order across those platforms. The SQL
+regression accepts only either complete five-digest control tuple by
+default; its explicit compare mode requires exactly the selected original
+control. All existing native hashes and both independent new same-platform
+controls match. The product hash implementation has not been changed.
