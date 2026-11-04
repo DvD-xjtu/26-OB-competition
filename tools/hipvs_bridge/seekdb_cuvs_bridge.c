@@ -40,12 +40,13 @@ void* seekdb_cuvs_build(const float* base, long n, long dim)
 {
   if (!base || n <= 0 || dim <= 0 ||
       (size_t)n > SIZE_MAX / sizeof(float) / (size_t)dim) return NULL;
+  const int compact_graph = dim <= 128;
   sk_cuvs_index* h = (sk_cuvs_index*)calloc(1, sizeof(*h));
   if (!h) return NULL;
   if (pthread_mutex_init(&h->search_mutex, NULL) != 0) { free(h); return NULL; }
   if (cuvsResourcesCreate(&h->res) != CUVS_SUCCESS) { pthread_mutex_destroy(&h->search_mutex); free(h); return NULL; }
 
-  DLManagedTensor dset = {0}; long ds[2] = {n, dim};
+  DLManagedTensor dset = {0}; int64_t ds[2] = {n, dim};
   dset.dl_tensor.data = (void*)base;
   dset.dl_tensor.device.device_type = kDLCPU; dset.dl_tensor.device.device_id = 0;
   dset.dl_tensor.ndim = 2;
@@ -53,10 +54,12 @@ void* seekdb_cuvs_build(const float* base, long n, long dim)
   dset.dl_tensor.shape = ds; dset.dl_tensor.strides = 0; dset.dl_tensor.byte_offset = 0;
 
   if (cuvsCagraIndexParamsCreate(&h->ip) != CUVS_SUCCESS) goto fail_res;
+  /* Use a larger construction budget for higher-dimensional vectors.
+   * The search below explores more branches to compensate for fewer build passes. */
   h->ip->build_algo = NN_DESCENT;
   h->ip->graph_degree = 128;
-  h->ip->intermediate_graph_degree = 256;
-  h->ip->nn_descent_niter = 100;
+  h->ip->intermediate_graph_degree = compact_graph ? 128 : 160;
+  h->ip->nn_descent_niter = compact_graph ? 24 : 32;
   if (cuvsCagraIndexCreate(&h->idx)      != CUVS_SUCCESS) goto fail_ip;
   if (cuvsCagraBuild(h->res, h->ip, &dset, h->idx) != CUVS_SUCCESS) goto fail_idx;
   h->n = n; h->dim = dim;
@@ -87,7 +90,8 @@ int seekdb_cuvs_search(void* handle, const float* query, long nq, long topk,
   dd = (float*)h->distance_buffer;
   if (cudaMemcpy(qd, query, sizeof(float)*nq*h->dim, cudaMemcpyDefault) != cudaSuccess) { rc=13; goto done; }
   {
-    DLManagedTensor qt = {0}, nt = {0}, dt = {0}; long qs[2]={nq,h->dim}, nsh[2]={nq,topk}, dsh[2]={nq,topk};
+    DLManagedTensor qt = {0}, nt = {0}, dt = {0};
+    int64_t qs[2]={nq,h->dim}, nsh[2]={nq,topk}, dsh[2]={nq,topk};
     qt.dl_tensor.data=qd; qt.dl_tensor.device.device_type=kDLCUDA; qt.dl_tensor.device.device_id=0;
     qt.dl_tensor.ndim=2; qt.dl_tensor.dtype.code=kDLFloat; qt.dl_tensor.dtype.bits=32; qt.dl_tensor.dtype.lanes=1;
     qt.dl_tensor.shape=qs; qt.dl_tensor.strides=0; qt.dl_tensor.byte_offset=0;
@@ -98,7 +102,7 @@ int seekdb_cuvs_search(void* handle, const float* query, long nq, long topk,
       size_t required_itopk = (size_t)topk * 4;
       if (required_itopk < 512) required_itopk = 512;
       if (sp->itopk_size < required_itopk) sp->itopk_size = required_itopk;
-      sp->search_width = 4;
+      sp->search_width = 32;
     }
     cuvsFilter f; f.type=NO_FILTER; f.addr=(uintptr_t)0;
     if (cuvsCagraSearch(h->res, sp, h->idx, &qt, &nt, &dt, f) != CUVS_SUCCESS) { rc=15; goto done; }

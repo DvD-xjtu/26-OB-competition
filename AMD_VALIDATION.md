@@ -1,9 +1,15 @@
-# AMD V5 candidate
+# AMD CAGRA tuned candidate
 
-Base: `634888d9b037153fa143d2c913ba4b25503e1d62` (official V5).
+This candidate uses the official frozen V5 commit `634888d9b037153fa143d2c913ba4b25503e1d62` and the per-index query workspace from our earlier commit `c8969b3839ad2880916d40c7a5e3dd0842644fb0`.
 
-Candidate changes reuse GPU query/output buffers within a live index and serialize calls to that workspace. Workspace is released with the index. No graph or query-result cache is reused across indexes or evaluation rounds. CAGRA construction and search parameters are unchanged. Distance-copy failures now return an error instead of claiming success.
+The parameter choices reproduce the public tuning hypothesis in [juanzhi-gcb/seekdb commit 10efa0c](https://github.com/juanzhi-gcb/seekdb/commit/10efa0c9f2c84e9959d9154f602d9950421ee13b). With graph degree 128, the bridge selects intermediate degree 128 and 24 NN-Descent iterations through 128 dimensions, then intermediate degree 160 and 32 iterations above 128 dimensions. Query width rises to 32 while the candidate-list floor stays at 512. The bridge continues to call the fixed hipVS CAGRA search implementation. This branch uses our V5 snapshot and worker implementations. Its results must be measured independently of the reference repository.
 
-This is a query-path optimization candidate, not a claim of full-score build acceleration. It has not been compiled with ROCm/hipVS or run on the required W7900D. Current local machine has no `hipcc`; no GPU timings, Recall, or resource claims have been made.
+## Reproduction
 
-Required validation: official offline build; persistence write/read test; alternating top-k and query batch sizes; concurrent callers; allocation/copy failure handling; CPU `lib=vsag` regression; official paired SIFT250K/Hidden250K Recall, query regression and VRAM gates. Retained workspace peaks must be measured against the 1.25x VRAM limit. Full build optimization remains outstanding.
+Build the bridge and seekdb with the published contest commands, with `OB_BUILD_CUVS=ON` and `OB_BUILD_CUVS_TRACE=OFF`. In a separate AMD development environment, verify which bridge the observer loads before timing.
+
+For a paired comparison, use the same fixed hipVS build, SQL parameters and data in fresh instances. Compare the frozen V5 bridge, our workspace-only bridge at `c8969b38`, and this branch. To isolate graph tuning and search compensation, evaluate the tuned graph first at width 4, then at width 32. Measure from offline `CREATE VECTOR INDEX` through the first completed query. Check both Top-10 and Top-100 with 4,096 individual SQL probes per group, exact ground truth, and valid distinct IDs. Record QPS, peak VRAM, CPU VSAG behavior and whether restart loads the GPU snapshot. Record any recall or throughput regression alongside acceleration.
+
+## Evidence status
+
+The earlier team measurements in `amd-cagra-submit-2026` cover the uniform 40-iteration candidate on synthetic data. They do not measure this configuration. The public reference repository reports its own result and does not establish a score for this branch. This branch awaits a real AMD compile and paired runtime validation. The existing platform execution failure also remains unresolved.
