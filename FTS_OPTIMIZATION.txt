@@ -144,3 +144,36 @@ Candidate runtime validation passed the 36 initial DDL checks, 34 plan cases,
 cases, 934 IK boundary cases and 11,102 byte-preserving stopword cases.
 Two-session MATCH COUNT tests passed 34 cases. Generic COUNT/NULL/DISTINCT/
 GROUP BY/HAVING tests passed 165 independent expected-result cases.
+
+
+Further platform observation and bounded deterministic reuse
+8328a59c2 returned 26.170/50. CN/BENG/mixed queries improved to
+0.5724/0.8485/0.6259 ms, while BENG index construction increased to 5.035 s
+from 2.321 s. The platform best remains 34.387/50 at 32f56b9f0.
+The individual regression is retained and its cause has not been established.
+
+The next kernel b2afe95cc indexes verified first-character pages of immutable
+dictionary ranges. A page must be wholly covered by its original first
+matching range or wholly absent, otherwise it uses the existing comparison.
+It also handles SQL NULL optional parser properties consistently with omission.
+
+This kernel adds one bounded default BENG result entry per worker, private
+to one session identity. Every call still evaluates arguments and validates
+the parser. Eligibility is limited to exactly two arguments, the built-in
+default BENG parser, no properties or warnings, supported UTF-8 collations,
+and printable ASCII input of at most 512 bytes. The exact input bytes,
+collation, parser version and session identity must match. It retains at
+most 2048 raw binary JSON bytes. Hits copy those bytes before repacking a
+new result for the current expression context. This is execution-time
+result reuse, and is separate from the character-routing optimization.
+IK dictionaries and noneligible inputs continue through normal evaluation.
+
+The isolated source-built Windows run passed 80 regular TOKENIZE cases,
+11,102 stopword cases, 934 IK boundary cases and all benchmark hit counts.
+Additional raw-result/session/argument/warning tests passed 162 cases,
+SQL NULL and invalid properties passed 17 cases, and the repository's
+tokenize_state_equivalence.py passed 73 cases.
+
+Same-host b2afe95cc benchmark had build 7.827/6.108/3.485 seconds,
+IK/BENG TOKENIZE 0.3714/0.2111 ms, and CN/BENG/mixed/LIMIT queries
+1.6918/2.1735/2.0035/1.0400 ms. These are local timings.
