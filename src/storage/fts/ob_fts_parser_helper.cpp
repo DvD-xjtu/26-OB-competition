@@ -128,8 +128,7 @@ int ObFTParser::get_desc(const ObIFTParserDesc *&parser_desc) const
     static const ObBasicEnglishFTParserDesc desc;
     parser_desc = &desc;
   } else if (is_ik()) {
-    static const ObIKFTParserDesc desc;
-    parser_desc = &desc;
+    parser_desc = &ObIKFTParserDesc::builtin();
   } else if (is_ngram2()) {
     static const ObNgram2FTParserDesc desc;
     parser_desc = &desc;
@@ -263,7 +262,7 @@ int ObFTParseHelper::segment(
     const char *ft,
     const int64_t ft_len,
     common::ObIAllocator &allocator,
-    ObAddWord &add_word)
+    ObAddWord &add_word, const ObFTLexicalScope *scope)
 {
   int ret = OB_SUCCESS;
   if (OB_UNLIKELY(parser_version < 0 || nullptr == parser_desc || nullptr == cs || nullptr == ft || 0 >= ft_len)) {
@@ -282,7 +281,9 @@ int ObFTParseHelper::segment(
     param.min_ngram_size_ = property.min_ngram_token_size_;
     param.max_ngram_size_ = property.max_ngram_token_size_;
 
-    if (OB_FAIL(parser_desc->segment(&param, iter))) {
+    if (OB_FAIL(scope != nullptr && parser_desc == &ObIKFTParserDesc::builtin()
+                    ? ObIKFTParserDesc::builtin().segment_with_scope(&param, iter, scope)
+                    : parser_desc->segment(&param, iter))) {
     } else if (OB_ISNULL(iter)) {
       ret = OB_ERR_UNEXPECTED;
     } else {
@@ -402,8 +403,15 @@ int ObFTParseHelper::segment_stable_input(const ObObjMeta &meta, const char *ful
   return segment_impl(meta, fulltext, fulltext_len, doc_length, words, true);
 }
 
+int ObFTParseHelper::segment_stable_input(const ObObjMeta &meta, const char *fulltext,
+                                         int64_t fulltext_len, int64_t &doc_length, ObFTWordMap &words,
+                                         const ObFTLexicalScope *scope) const
+{
+  return segment_impl(meta, fulltext, fulltext_len, doc_length, words, true, scope);
+}
+
 int ObFTParseHelper::segment_impl(const ObObjMeta &meta, const char *fulltext, int64_t fulltext_len,
-                                 int64_t &doc_length, ObFTWordMap &words, bool stable_input) const
+                                 int64_t &doc_length, ObFTWordMap &words, bool stable_input, const ObFTLexicalScope *scope) const
 {
   int ret = OB_SUCCESS;
   const ObCharsetInfo *cs = nullptr;
@@ -430,7 +438,7 @@ int ObFTParseHelper::segment_impl(const ObObjMeta &meta, const char *fulltext, i
                     fulltext,
                     fulltext_len,
                     *allocator_,
-                    add_word))) {
+                    add_word, stable_input ? scope : nullptr))) {
     } else {
       doc_length = add_word.get_add_word_count();
     }

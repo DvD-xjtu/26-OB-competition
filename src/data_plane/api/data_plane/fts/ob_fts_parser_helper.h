@@ -183,6 +183,8 @@ public:
   // The caller keeps the input bytes immutable until all token views are consumed.
   int segment_stable_input(const common::ObObjMeta &meta, const char *fulltext, int64_t fulltext_len,
                            int64_t &doc_length, ObFTWordMap &words) const;
+  int segment_stable_input(const common::ObObjMeta &meta, const char *fulltext, int64_t fulltext_len,
+                           int64_t &doc_length, ObFTWordMap &words, const ObFTLexicalScope *scope) const;
   int check_is_the_same(
       const common::ObString &parser_name,
       const common::ObString &parser_properties,
@@ -215,7 +217,7 @@ public:
 
 private:
   int segment_impl(const common::ObObjMeta &meta, const char *fulltext, int64_t fulltext_len,
-                   int64_t &doc_length, ObFTWordMap &words, bool stable_input) const;
+                   int64_t &doc_length, ObFTWordMap &words, bool stable_input, const ObFTLexicalScope *scope = nullptr) const;
   int init_impl(common::ObIAllocator *allocator, const common::ObString &parser_name,
                 const common::ObString &serialized, const ObFTParserJsonProps *validated,
                 const ObFTParser *resolved = nullptr);
@@ -227,7 +229,7 @@ private:
       const char *fulltext,
       const int64_t fulltext_len,
       common::ObIAllocator &allocator,
-      ObAddWord &add_word);
+      ObAddWord &add_word, const ObFTLexicalScope *scope);
   int set_add_word_flag(const ObIFTParserDesc &ftparser_desc);
 private:
   common::ObIAllocator *allocator_;

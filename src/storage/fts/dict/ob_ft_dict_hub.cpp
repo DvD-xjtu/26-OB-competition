@@ -32,7 +32,17 @@ namespace storage
 // Built-in IK dictionaries are immutable for the lifetime of the hub. Their
 // cache handles stay pinned while parsers borrow the const matching interface.
 // Per-document trie hits and token lists remain private to each parser.
+// An exhausted counter disables reuse rather than recycling a dictionary identity.
+static uint64_t next_ik_dictionary_epoch()
+{
+  static std::atomic<uint64_t> epoch{0};
+  uint64_t old = epoch.load(std::memory_order_relaxed);
+  while (old != UINT64_MAX && !epoch.compare_exchange_weak(old, old + 1, std::memory_order_relaxed)) {}
+  return old == UINT64_MAX ? 0 : old + 1;
+}
+
 struct SharedIKDictionaries {
+  uint64_t epoch = 0;
   ObArenaAllocator allocator;
   ObFTCacheRangeContainer main_cache, quantifier_cache, stop_cache;
   ObFTRangeDict *main = nullptr, *quantifier = nullptr, *stop = nullptr;
@@ -56,6 +66,13 @@ ObFTDictHub::~ObFTDictHub() { destroy(); }
 
 int ObFTDictHub::get_shared_ik_dicts(ObIFTDict *&main, ObIFTDict *&quantifier, ObIFTDict *&stop)
 {
+  uint64_t unused_epoch = 0;
+  return get_shared_ik_dicts(main, quantifier, stop, unused_epoch);
+}
+
+int ObFTDictHub::get_shared_ik_dicts(ObIFTDict *&main, ObIFTDict *&quantifier, ObIFTDict *&stop, uint64_t &epoch)
+{
+  epoch = 0;
   int ret = OB_SUCCESS;
   SharedIKDictionaries *shared = shared_ik_.load(std::memory_order_acquire);
   if (!is_inited_) { ret = OB_NOT_INIT; }
@@ -69,11 +86,14 @@ int ObFTDictHub::get_shared_ik_dicts(ObIFTDict *&main, ObIFTDict *&quantifier, O
       } else if (OB_FAIL(shared->build(*this, ObFTDictType::DICT_IK_QUAN, "quan_dict", shared->quantifier_cache, shared->quantifier))) {
       } else if (OB_FAIL(shared->build(*this, ObFTDictType::DICT_IK_STOP, "stopword", shared->stop_cache, shared->stop))) {
       }
-      if (OB_SUCC(ret)) { shared_ik_.store(shared, std::memory_order_release); }
+      if (OB_SUCC(ret)) {
+        shared->epoch = next_ik_dictionary_epoch();
+        shared_ik_.store(shared, std::memory_order_release);
+      }
       else { delete shared; shared = nullptr; }
     }
   }
-  if (OB_SUCC(ret)) { main = shared->main; quantifier = shared->quantifier; stop = shared->stop; }
+  if (OB_SUCC(ret)) { main = shared->main; quantifier = shared->quantifier; stop = shared->stop; epoch = shared->epoch; }
   return ret;
 }
 

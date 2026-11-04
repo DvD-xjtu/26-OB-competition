@@ -52,6 +52,20 @@ public:
   common::ObString stopword_dict_;
 };
 
+// An explicit opt-in from a caller that owns the immutable input and session.
+// Direct parser users and DDL default to no cross-call lexical reuse.
+struct ObFTLexicalScope {
+  uintptr_t session_ = 0;
+  uint32_t sid_ = 0;
+  int64_t created_ = 0;
+  uint64_t user_ = 0, effective_user_ = 0, database_ = 0;
+  bool valid() const { return session_ != 0 && sid_ != 0 && created_ > 0; }
+  bool operator==(const ObFTLexicalScope &b) const {
+    return session_ == b.session_ && sid_ == b.sid_ && created_ == b.created_
+        && user_ == b.user_ && effective_user_ == b.effective_user_ && database_ == b.database_;
+  }
+};
+
 class ObFTParserParam final
 {
 public:

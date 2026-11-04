@@ -135,6 +135,15 @@ int ObExprTokenize::eval_tokenize(const ObExpr &expr, ObEvalCtx &ctx, ObDatum &e
     const ObCollationType cs = param.meta_.get_collation_type();
     const int64_t version = param.parser_.get_parser_version();
     ObWarningBuffer *warnings = ob_get_tsi_warning_buffer();
+    if (session != nullptr && warnings != nullptr && warnings->get_total_warning_count() == 0
+        && param.parser_.is_ik()) {
+      param.lexical_scope_.session_ = reinterpret_cast<uintptr_t>(session);
+      param.lexical_scope_.sid_ = session->get_sid();
+      param.lexical_scope_.created_ = session->get_sess_create_time();
+      param.lexical_scope_.user_ = session->get_user_id();
+      param.lexical_scope_.effective_user_ = session->get_priv_user_id();
+      param.lexical_scope_.database_ = session->get_database_id();
+    }
     // With exactly two arguments the builtin BENG parameters are the fixed
     // defaults and the output is a JSON array. Other forms follow the normal path.
     const bool eligible = expr.arg_cnt_ == 2 && param.parser_.is_beng()
@@ -190,7 +199,7 @@ int ObExprTokenize::tokenize_fulltext(const TokenizeParam &param,
                      param.fulltext_.ptr(),
                      param.fulltext_.length(),
                      doc_len,
-                     token_map))) {
+                     token_map, param.lexical_scope_.valid() ? &param.lexical_scope_ : nullptr))) {
   } else {
     switch (param.output_mode_) {
     case TokenizeParam::OUTPUT_MODE::DEFAULT: {

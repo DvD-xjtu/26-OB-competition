@@ -105,6 +105,7 @@ public:
 
   int init();
   int get_shared_ik_dicts(ObIFTDict *&main, ObIFTDict *&quantifier, ObIFTDict *&stop);
+  int get_shared_ik_dicts(ObIFTDict *&main, ObIFTDict *&quantifier, ObIFTDict *&stop, uint64_t &epoch);
 
   int destroy();
 

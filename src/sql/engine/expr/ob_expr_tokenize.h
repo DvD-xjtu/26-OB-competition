@@ -70,6 +70,7 @@ private:
     // for property and tmp json string
     common::ObArenaAllocator &allocator_;
     storage::ObFTParser parser_;
+    storage::ObFTLexicalScope lexical_scope_;
     ObString properties_;
     storage::ObFTParserJsonProps validated_properties_;
     ObObjMeta meta_;
