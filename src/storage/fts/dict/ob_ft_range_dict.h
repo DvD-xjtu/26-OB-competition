@@ -94,6 +94,7 @@ private:
       range_dicts_[i].dict_->~ObIFTDict(); // destroy dict
     }
     range_dicts_.reset();
+    ordered_ranges_ = true;
     range_alloc_.reset();
   }
 
@@ -105,6 +106,7 @@ private:
   ObFTDictDesc desc_;
   ObArenaAllocator range_alloc_;
   ObVector<ObFTRange, ObArenaAllocator> range_dicts_;
+  bool ordered_ranges_ = true;
   ObFTCacheRangeContainer *range_container_; // only used to read cache
 
 private:

@@ -380,6 +380,25 @@ int ObFTRangeDict::match_with_hit(const ObString &single_word,
 
 int ObFTRangeDict::find_first_char_range(const ObString &single_word, ObIFTDict *&dict) const
 {
+  if (ordered_ranges_) {
+    const auto collation = ObCollationType::CS_TYPE_UTF8MB4_BIN;
+    int64_t first = 0;
+    int64_t last = range_dicts_.size();
+    while (first < last) {
+      const int64_t mid = first + (last - first) / 2;
+      if (ObCharset::strcmp(collation, range_dicts_[mid].end_.get_word(), single_word) < 0) {
+        first = mid + 1;
+      } else {
+        last = mid;
+      }
+    }
+    if (first == range_dicts_.size() ||
+        ObCharset::strcmp(collation, range_dicts_[first].start_.get_word(), single_word) > 0) {
+      return OB_ENTRY_NOT_EXIST;
+    }
+    dict = range_dicts_[first].dict_;
+    return OB_SUCCESS;
+  }
   int ret = OB_SUCCESS;
   bool found = false;
   for (int i = 0; OB_SUCC(ret) && !found && i < range_dicts_.size(); ++i) {
@@ -418,6 +437,14 @@ int ObFTRangeDict::build_dict_from_cache(const ObFTCacheRangeContainer &range_co
       range.start_ = dat->start_word_;
       range.end_ = dat->end_word_;
       range.dict_ = dict;
+      // Both endpoint sequences must be monotonic. Lower-bound on the end
+      // then preserves the first matching range even for overlapping ranges.
+      if (ordered_ranges_ && range_dicts_.size() > 0) {
+        const auto collation = ObCollationType::CS_TYPE_UTF8MB4_BIN;
+        const ObFTRange &prev = range_dicts_[range_dicts_.size() - 1];
+        ordered_ranges_ = ObCharset::strcmp(collation, prev.start_.get_word(), range.start_.get_word()) <= 0
+            && ObCharset::strcmp(collation, prev.end_.get_word(), range.end_.get_word()) <= 0;
+      }
       if (OB_FAIL(range_dicts_.push_back(range))) {
       }
     }
