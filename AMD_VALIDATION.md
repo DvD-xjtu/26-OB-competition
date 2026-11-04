@@ -1,5 +1,13 @@
 # AMD CAGRA persistent-query-worker candidate
 
+## Compile correction (2026-11-05)
+
+The user supplied a platform screenshot showing the initial worker commit `5e33258ae92b6d32841b1e3ac78d2df897d045f3` failed to execute. A complete adaptor translation-unit check then reproduced a concrete compile blocker in that commit: `LOG_WARN` expands to an implicit `ret` argument, but the boolean search function has no such local variable. The earlier fake-bridge tests extracted the callback and dispatch wrapper; they did not compile this caller/logging macro. Those CPU test passes did not establish that the submitted source compiled.
+
+The production correction is one line: use `LOG_WARN_RET(OB_ERR_VSAG_RETURN_ERROR, ...)` to pass the error code explicitly. The worker logic, bridge and parameters are unchanged. Full translation-unit syntax checks with actual project headers now pass both with the GPU path enabled and with the CPU stubs. As controls, 89cc68b0 passes the same enabled-path check and the initial 5e33258a source fails specifically on undeclared `ret`.
+
+The repeatable check is `python3 tools/hipvs_bridge/test_query_worker.py --compile-commands /path/to/build/compile_commands.json`. `--source-ref` checks a committed source revision. A compatible local macOS checkout supplied dependency/build flags here; source include roots were mapped to this V5 checkout. Local Apple Clang additionally required `--extra-flag=-Wno-unnecessary-virtual-specifier` for four warnings in unchanged V5 `page_arena.h`; that same adjustment was used for the passing baseline and failing old worker control. These are full-file host syntax checks, not a Linux/ROCm build, link or runtime claim. The fixed candidate still requires formal platform validation. No backend failure code was independently retrieved.
+
 ## Current comparison
 
 The parent experiment is `amd-cagra-tuned-2026` at `89cc68b0f371056a1e7a4667e15929ced13d4b25`. The user reports its official platform result as `build=2.033x, query=1.319x, gates=pass` (approximately 14.4/20). The clean V5 control previously completed with 4.145/20. These are user-provided platform results, not independently retrieved by this checkout.

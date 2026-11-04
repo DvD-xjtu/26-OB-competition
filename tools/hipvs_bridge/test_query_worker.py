@@ -6,6 +6,9 @@ These are CPU synchronization and integration checks, not GPU validation.
 import argparse
 import os
 from pathlib import Path
+import json
+import re
+import shlex
 import subprocess
 import tempfile
 
@@ -168,11 +171,64 @@ int main() {
 '''
 
 
+def compile_adaptor(database, source_ref=None, extra_flags=()):
+    """Compile the full source with real project headers, not the fake bridge.
+
+    A compatible checkout's compile database may supply the local platform port
+    and dependency paths. Source include roots are then mapped to this checkout.
+    This is a translation-unit check, not a Linux/ROCm build or link check.
+    """
+    for entry in json.loads(database.read_text()):
+        path = Path(entry["file"])
+        if str(path).endswith("/src/oblib/lib/vector/ob_vsag_adaptor.cpp"):
+            original = str(path).split("/src/oblib/lib/vector/")[0]
+            break
+        if path.is_file():
+            match = re.search(r'#include\s+"([^"]*/src/oblib/lib/vector/ob_vsag_adaptor\.cpp)"', path.read_text(errors="ignore"))
+            if match:
+                original = match.group(1).split("/src/oblib/lib/vector/")[0]
+                break
+    else:
+        raise RuntimeError("No adaptor translation unit found in compile database")
+    args = entry.get("arguments") or shlex.split(entry["command"])
+    flags, index = [], 0
+    while index < len(args):
+        arg = args[index]
+        if arg in ("-o", "-MF", "-MT", "-MQ"):
+            index += 2
+            continue
+        if arg in ("-c", "-MD", "-MMD") or arg == entry["file"]:
+            index += 1
+            continue
+        if arg.startswith("-I" + original + "/src"):
+            arg = arg.replace(original + "/src", str(ROOT / "src"), 1)
+        flags.append(arg)
+        index += 1
+    flags += ["-DOB_BUILD_CUVS=1", "-fsyntax-only", "-I" + str(ADAPTOR.parent)]
+    flags += list(extra_flags)
+    with tempfile.TemporaryDirectory(prefix="seekdb-adaptor-compile-") as tmp:
+        source = ADAPTOR
+        if source_ref:
+            source = Path(tmp) / "ob_vsag_adaptor.cpp"
+            source.write_bytes(subprocess.check_output(
+                ["git", "show", f"{source_ref}:src/oblib/lib/vector/ob_vsag_adaptor.cpp"], cwd=ROOT))
+        result = subprocess.run(flags + [str(source)], cwd=entry["directory"], timeout=120)
+        if result.returncode:
+            raise SystemExit(result.returncode)
+    print("PASS: complete adaptor translation unit with real project headers", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", action="store_true")
     parser.add_argument("--sanitize", choices=("address", "thread"))
+    parser.add_argument("--compile-commands", type=Path, help="Check the complete adaptor using a compatible project compile database")
+    parser.add_argument("--source-ref", help="Compile an earlier Git source revision as a regression control")
+    parser.add_argument("--extra-flag", action="append", default=[], help="Explicit host-compiler adjustment for the full-source check only")
     args = parser.parse_args()
+    if args.compile_commands:
+        compile_adaptor(args.compile_commands, args.source_ref, args.extra_flag)
+        return
     source = ADAPTOR.read_text()
     callback = source[source.index("struct ObCuvsJob {"):source.index("// [BATCH] Feed")]
     integrated = "// Reuse one large-stack GPU search worker." in callback

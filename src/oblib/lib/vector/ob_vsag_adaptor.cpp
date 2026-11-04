@@ -292,7 +292,7 @@ static bool ob_cuvs_try_search(void *key, vsag::Allocator *alloc,
   std::vector<float> dst(topk);
   ObCuvsJob job{ent, query, topk, static_cast<int>(ent->dim_), n, need_build, &off, &dst, -1, false};
   if (!ob_cuvs_run_search_job(&job)) {
-    LOG_WARN("[OBVSAG][cuVS] failed to start GPU search worker", KP(key));
+    LOG_WARN_RET(OB_ERR_VSAG_RETURN_ERROR, "[OBVSAG][cuVS] failed to start GPU search worker", KP(key));
     return false;
   }
   if (job.built_) { ob_vsag_trace("cuvs_build", key, static_cast<long>(ent->dim_), static_cast<long>(n)); }
