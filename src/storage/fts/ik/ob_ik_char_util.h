@@ -52,6 +52,36 @@ public:
                                  const uint8_t char_len,
                                  CharType &type);
 
+  static int read_char(ObCollationType collation, const char *input, int64_t remaining,
+                       int64_t &length, CharType &type)
+  {
+    if (remaining > 0 && input != nullptr &&
+        (collation == CS_TYPE_UTF8MB4_BIN || collation == CS_TYPE_UTF8MB4_GENERAL_CI)) {
+      const auto *bytes = reinterpret_cast<const unsigned char *>(input);
+      const unsigned char lead = bytes[0];
+      if (lead < 0x80) {
+        const int folded = lead | 0x20;
+        type = folded >= 'a' && folded <= 'z' ? CharType::ENGLISH_LETTER
+             : lead >= '0' && lead <= '9' ? CharType::ARABIC_LETTER : CharType::USELESS;
+        length = 1;
+        return OB_SUCCESS;
+      }
+      // The well-formed UTF-8 encoding of U+4E00..U+9FFF starts with E4 B8..E9 BF.
+      if (remaining >= 3 && lead >= 0xe4 && lead <= 0xe9 &&
+          (bytes[1] & 0xc0) == 0x80 && (bytes[2] & 0xc0) == 0x80 &&
+          (lead != 0xe4 || bytes[1] >= 0xb8)) {
+        length = 3;
+        type = CharType::CHINESE;
+        return OB_SUCCESS;
+      }
+    }
+    int ret = ObCharset::first_valid_char(collation, input, remaining, length);
+    if (OB_SUCC(ret)) {
+      ret = classify_first_char(collation, input, length, type);
+    }
+    return ret;
+  }
+
   static int check_cn_number(ObCollationType coll_type,
                              const char *input,
                              const uint8_t char_len,
