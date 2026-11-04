@@ -238,6 +238,28 @@ int ObDocIdExt::from_datum(const ObDatum &datum)
   return ret;
 }
 
+// The temporary SQL frame is shared by token scans. Own every returned ID
+// before another scan reuses it, without a per-row helper call for a dense page.
+int ObDocIdExt::copy_posting_batch(const ObDatumVector &source, int64_t count, ObDocIdExt *target)
+{
+  int ret = OB_SUCCESS;
+  for (int64_t i = 0; OB_SUCC(ret) && i < count; ++i) {
+    const ObDatum &value = *source.at(i);
+    ObDocIdExt &id = target[i];
+    if (!value.is_null() && value.len_ == OB_DOC_ID_COLUMN_BYTE_LENGTH) {
+      MEMCPY(id.buf_, value.ptr_, OB_DOC_ID_COLUMN_BYTE_LENGTH);
+    } else if (!value.is_null() && value.len_ == sizeof(uint64_t)) {
+      MEMCPY(id.buf_, value.ptr_, sizeof(uint64_t));
+    } else {
+      ret = id.from_datum(value);
+      continue;
+    }
+    id.datum_ = value;
+    id.datum_.ptr_ = id.buf_;
+  }
+  return ret;
+}
+
 ObDocIdExt &ObDocIdExt::operator=(const ObDocIdExt &other)
 {
   if (this != &other) {

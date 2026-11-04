@@ -549,11 +549,18 @@ int ObTextRetrievalDaaTTokenIter::read_membership_batch(const ObDocIdExt *&ids, 
       ret = OB_ERR_UNEXPECTED;
     } else {
       const ObDatumVector &values = inv_scan_domain_id_col_->locate_expr_datumvector(*eval_ctx_);
-      for (int64_t i = 0; OB_SUCC(ret) && i < rows; ++i) {
-        if (!token_iter_->get_skip()->at(i)) {
-          if (OB_FAIL(doc_id_[count].from_datum(*values.at(i)))) {
-          } else {
-            ++count;
+      if (rows > 0 && token_iter_->get_skip()->is_all_false(rows)) {
+        if (OB_FAIL(ObDocIdExt::copy_posting_batch(values, rows, &doc_id_[0]))) {
+        } else {
+          count = rows;
+        }
+      } else {
+        for (int64_t i = 0; OB_SUCC(ret) && i < rows; ++i) {
+          if (!token_iter_->get_skip()->at(i)) {
+            if (OB_FAIL(doc_id_[count].from_datum(*values.at(i)))) {
+            } else {
+              ++count;
+            }
           }
         }
       }

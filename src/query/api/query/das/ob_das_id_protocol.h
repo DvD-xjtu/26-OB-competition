@@ -41,6 +41,7 @@ public:
   int hash(uint64_t &hash_val) const;
   const common::ObDatum &get_datum() const;
   int from_datum(const common::ObDatum &datum);
+  static int copy_posting_batch(const common::ObDatumVector &source, int64_t count, ObDocIdExt *target);
   int from_obj(const common::ObObj &obj);
 
   ObDocIdExt &operator=(const ObDocIdExt &other);

@@ -141,6 +141,14 @@ int ObTextDaaTIter::merge_rows(const int64_t capacity, int64_t &count)
       PostingBatch &batch = postings_[active[0]];
       if (membership_min_matches_ > 1) {
         batch.pos_ = batch.size_;
+      } else if (set_datum_func_ == nullptr && !iter_param_->limit_param_->is_valid()) {
+        // A token posting list has one entry per document. With only this
+        // stream left, every already-read visible ID contributes one output row.
+        const int64_t rows = MIN(capacity - count, batch.size_ - batch.pos_);
+        batch.pos_ += rows;
+        input_row_cnt_ += rows;
+        output_row_cnt_ += rows;
+        count += rows;
       } else {
         while (OB_SUCC(ret) && count < capacity && batch.pos_ < batch.size_) {
           ret = cache_result(count, batch.ids_[batch.pos_++].get_datum(), 1.0);
