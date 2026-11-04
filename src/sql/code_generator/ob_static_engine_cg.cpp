@@ -3681,6 +3681,15 @@ int ObStaticEngineCG::generate_normal_tsc(ObLogTableScan &op, ObTableScanSpec &s
       } else if (ddl_table_schema->is_fts_index_aux() || ddl_table_schema->is_fts_doc_word_aux()) {
         spec.is_fts_ddl_ = true;
         spec.is_fts_index_aux_ = ddl_table_schema->is_fts_index_aux();
+        // A heap index can use the integer row key as its document ID.
+        // The vector posting projection represents document IDs as strings.
+        // Keep the scalar path unless the auxiliary key has the binary DOC_ID layout.
+        const ObRowkeyColumn *doc_key = ddl_table_schema->get_rowkey_info().get_column(spec.is_fts_index_aux_ ? 1 : 0);
+        const ObColumnSchemaV2 *doc_col = doc_key == nullptr ? nullptr : ddl_table_schema->get_column_schema(doc_key->column_id_);
+        if (doc_col == nullptr || !doc_col->is_doc_id_column() || doc_col->get_data_type() != ObVarcharType
+            || doc_col->get_collation_type() != CS_TYPE_BINARY || doc_col->get_data_length() != OB_DOC_ID_COLUMN_BYTE_LENGTH) {
+          spec.max_batch_size_ = 0;
+        }
         if (OB_UNLIKELY(ddl_table_schema->get_parser_name_str().empty())) {
           ret = OB_ERR_UNEXPECTED;
         } else {
