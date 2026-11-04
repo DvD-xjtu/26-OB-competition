@@ -78,4 +78,3 @@ if __name__ == "__main__":
                          unix_socket=os.getenv("FTS_TEST_SOCKET"),
                          user="root", charset="utf8mb4", autocommit=True) as conn:
         check(conn)
-

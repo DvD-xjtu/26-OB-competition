@@ -40,3 +40,80 @@ tokenize_ik_avg_ms 0.3265; tokenize_beng_avg_ms 0.2736
 query_cn_avg_ms 2.4237; query_beng_avg_ms 3.5107; query_mixed_avg_ms 2.3670; query_limit_avg_ms 3.1481
 select1_avg_ms 0.2339; all hit counts unchanged.
 These measurements are noisy (CN stdev 0.1403 ms, BEng 0.2670 ms); they do not establish a consistent query improvement over iteration one. Official iteration-one score was 11.607/50, up from 0.428/50. Second-iteration official result is pending.
+
+
+November 4, 2026 — batched index builds, IK token ranges and membership scans
+
+The reference is the team's 1e2296b31 submission (8.919/50 on the platform).
+The candidate engine is f62558718. The historical team best at the start
+of this iteration was 15.347/50 at 9f45ebb09.
+
+Index build. Sampling a 20,000-document reference run showed the content-only
+IK ALTER spending most of its time filling the inverted and forward indexes.
+Their backfills can use different snapshots. Each still reads its own snapshot.
+A scan now reuses bounded per-document frequency buffers. It emits batches
+within a single source document for supported binary document IDs. Heap
+integer IDs use the scalar backfill path. Compatible two-column posting keys
+can use the engine's order-preserving sort encoding.
+
+Tokenization. IK arbitration now operates on sorted candidate ranges and uses
+contiguous prefix states and a cursor for emitted tokens. Range lookup uses a
+binary search only when both dictionary endpoint sequences are monotonic.
+Validated UTF-8 ASCII and unified ideographs need one classification pass.
+The stopword prefix filter is derived from the built-in dictionary. It only
+rejects impossible pairs of ASCII letters and defers all other cases to the
+original collation-aware comparison.
+
+Query. EXPLAIN EXTENDED of the reference showed a relevance sort and table
+lookup for a view with LIMIT whose parent only counts rows. The guarded rewrite
+omits that sort and base-column projection. Score-free inverted scans read
+document IDs, and short posting lists are merged in batches using the existing
+ID comparator. Queries that read a score or depend on the identity or order of
+selected documents keep their original ordering and scoring requirements.
+
+Same-host source-build comparison on Windows x64
+Both binaries used the same compiler, CMake configuration, isolated loopback
+server with 4 GiB memory budget, MariaDB client and unmodified benchmark suite.
+Full reload, 20,000 docs, 500 per load batch, 3,000 TOKENIZE calls, 200 MATCH calls,
+3 samples and 30 warmups. The full build was optimized with the same local
+Windows portability flags for unrelated file IO. These are local measurements.
+
+Metric                        1e2296b31   f62558718
+build_ik_all_sec                10.530       8.483
+build_ik_content_sec             8.004       6.424
+build_beng_en_sec                4.692       4.400
+tokenize_ik_avg_ms               0.3730      0.3667
+tokenize_beng_avg_ms             0.2718      0.2251
+query_cn_avg_ms                  2.6393      2.2611
+query_beng_avg_ms                3.5121      3.2056
+query_mixed_avg_ms               2.6831      2.3639
+query_limit_avg_ms               5.3142      1.0559
+select1_avg_ms (diagnostic)      0.1555      0.1226
+
+All four query hit counts were 8001, 11000, 7332 and 20 on both binaries.
+The category means from this comparison are 15.13% less build time, 9.44% less
+tokenization time and 28.77% less query time. The SQL-loop baseline also varied.
+The platform uses its own fixed reference when scoring a submission.
+
+Regression coverage. ddl_batch_equivalence.py in unittest/storage/fts checks
+255/256/257/601-term documents, frequencies and ranking, real base-row lookups
+on heap tables and updates/deletes. limited_view_count.py --check-plan checks
+that the counted view avoids index back, relevance and sorting while queries
+that observe those results retain their ranked plans. Tokenizer equivalence
+comparisons use the same test driver against both source builds. The candidate passed
+36 initial DDL checks, 34 LIMIT cases, the 4,844 posting/heap checks and 208
+additional index comparisons across collations and layouts. Ordered TOKENIZE
+outputs or SQL errors matched in 80 regular cases, 934 IK range cases and
+11,102 stopword cases.
+
+Public implementation references
+- Batched auxiliary-index construction, score-free postings and counted-view
+  projections were adapted to this branch's existing cursor, comparator and
+  visibility checks. https://github.com/oceanbase/seekdb/pull/1790
+- Encoded auxiliary-key sorting was narrowed to checked key layouts and
+  supported collations. https://github.com/oceanbase/seekdb/pull/2142
+- Dictionary range lookup and UTF-8 classification ideas were adapted with
+  ordered-range validation and fallback paths. https://github.com/oceanbase/seekdb/pull/1630
+  https://github.com/oceanbase/seekdb/pull/2147
+- The dictionary-derived prefix filter was motivated by the stopword profile at
+  https://github.com/beifeng-h/nailong-seekdb/commit/507b4f57e9abf7d59966bbd0d86bdd2a107fb68c
