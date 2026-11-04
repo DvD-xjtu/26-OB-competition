@@ -225,3 +225,27 @@ IK/BENG TOKENIZE 0.3878/0.2134 ms and CN/BENG/mixed/LIMIT queries
 was 0.1380 ms; several sample spreads were wider than previous runs, so
 these figures are retained without claiming a platform score or a precise
 combined speedup. Official assessment of this candidate is pending.
+
+The platform subsequently returned 40.101/50 for 91c96cafe (7764f1510
+kernel plus documentation/tests). Build was 4.855/3.726/2.223 s,
+IK/BENG TOKENIZE 0.0574/0.0330 ms and CN/BENG/mixed/LIMIT queries
+0.5154/0.7730/0.5774/0.1096 ms, with all four expected hit counts.
+Eight of these nine elapsed times are lower than the previous 40.988 run.
+The exact online scoring reference is not included in this result, and the
+checked-in public baseline cannot reproduce these online mean-improvement
+values. The highest observed official score remains 40.988/50.
+
+The next query-only change copies a dense active posting page in one
+routine while preserving ownership of every actual 8/16-byte document ID.
+Sparse/NULL/other-width cases retain their existing handling. When the
+validated COUNT path has only one unlimited stream left, its already-read
+snapshot-visible rows can be counted in a batch without copying an unused
+result value. No count is inferred from metadata or from an earlier query.
+
+Its source-built 76d2e11e0 Windows engine passed 425 SQL checks, including
+protected projections, physical partitions, heap tables and two-session
+transactions. In a same-data A/B/B/A comparison, all 12,000 timed counts
+matched. CN/BENG means improved by 18.31%/12.96%; mixed mean regressed
+1.92% and its two pairs disagreed. This variation is retained, and the
+platform result remains pending. The engine source is identical to the
+subsequent 347a3c562 cherry-pick; their differences are docs/tests only.
