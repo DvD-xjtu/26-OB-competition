@@ -535,6 +535,36 @@ int ObTextRetrievalDaaTTokenIter::save_docids()
   return ret;
 }
 
+// Each token scan uses the same expression frame. Own these IDs until this
+// particular token needs its next batch, after all current IDs were consumed.
+int ObTextRetrievalDaaTTokenIter::read_membership_batch(const ObDocIdExt *&ids, int64_t &count)
+{
+  int ret = OB_SUCCESS;
+  ids = nullptr;
+  count = 0;
+  while (OB_SUCC(ret) && count == 0) {
+    int64_t rows = 0;
+    if (OB_FAIL(token_iter_->get_next_batch(max_batch_size_, rows))) {
+    } else if (OB_UNLIKELY(rows < 0 || rows > doc_id_.count())) {
+      ret = OB_ERR_UNEXPECTED;
+    } else {
+      const ObDatumVector &values = inv_scan_domain_id_col_->locate_expr_datumvector(*eval_ctx_);
+      for (int64_t i = 0; OB_SUCC(ret) && i < rows; ++i) {
+        if (!token_iter_->get_skip()->at(i)) {
+          if (OB_FAIL(doc_id_[count].from_datum(*values.at(i)))) {
+          } else {
+            ++count;
+          }
+        }
+      }
+    }
+  }
+  if (OB_SUCC(ret)) {
+    ids = &doc_id_[0];
+  }
+  return ret;
+}
+
 int ObTextRetrievalDaaTTokenIter::get_next_batch(const int64_t capacity, int64_t &count)
 {
   return OB_NOT_IMPLEMENT;

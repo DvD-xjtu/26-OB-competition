@@ -42,6 +42,7 @@ int ObTextDaaTIter::init(const ObTextDaaTParam &param)
 
 void ObTextDaaTIter::reset()
 {
+  for (auto &batch : postings_) { batch = {}; }
   bm25_param_estimator_.reset();
   // this class can know the type of dim_iters_, but ObSRDaaTIterImpl maybe not
   if (OB_NOT_NULL(dim_iters_)) {
@@ -54,6 +55,7 @@ void ObTextDaaTIter::reset()
 
 void ObTextDaaTIter::reuse(const bool switch_tablet)
 {
+  for (auto &batch : postings_) { batch = {}; }
   if ((OB_NOT_NULL(dim_iters_) && 0 == dim_iters_->count())) {
     // do nothing
   } else {
@@ -74,6 +76,72 @@ int ObTextDaaTIter::pre_process()
     ret = OB_ITER_END;
   } else if (iter_param_->relevance_expr_ != nullptr) {
     if (OB_FAIL(bm25_param_estimator_.do_estimation(*iter_param_->eval_ctx_))) {
+    }
+  }
+  return ret;
+}
+
+int ObTextDaaTIter::merge_rows(const int64_t capacity, int64_t &count)
+{
+  const int64_t streams = dim_iters_->count();
+  if (membership_min_matches_ < 0 || streams == 0 || streams > MAX_SHORT_STREAMS
+      || function_lookup_mode_ || mode_flag_ != sql::ObMatchAgainstMode::NATURAL_LANGUAGE_MODE
+      || !iter_param_->eval_ctx_->is_vectorized() || iter_param_->relevance_expr_ != nullptr
+      || iter_param_->dim_weights_ != nullptr || iter_param_->need_filter()
+      || iter_param_->need_project_relevance() || iter_param_->need_pushdown_topk()) {
+    return ObSRDaaTIterImpl::merge_rows(capacity, count);
+  }
+  int ret = OB_SUCCESS;
+  while (OB_SUCC(ret) && count < capacity) {
+    ObSRMergeItem winner;
+    int64_t matching = 0;
+    int64_t active = 0;
+    for (int64_t i = 0; OB_SUCC(ret) && i < streams; ++i) {
+      PostingBatch &batch = postings_[i];
+      if (!batch.end_ && batch.pos_ == batch.size_) {
+        auto *stream = static_cast<ObTextRetrievalDaaTTokenIter *>(dim_iters_->at(i));
+        batch.pos_ = 0;
+        if (OB_FAIL(stream->read_membership_batch(batch.ids_, batch.size_)) && ret == OB_ITER_END) {
+          batch.end_ = true;
+          ret = OB_SUCCESS;
+        }
+      }
+      if (OB_SUCC(ret) && !batch.end_) {
+        ++active;
+        ObSRMergeItem head;
+        head.iter_idx_ = i;
+        iter_domain_ids_[i] = &batch.ids_[batch.pos_].get_datum();
+        int64_t order = -1;
+        if (winner.iter_idx_ >= 0 && OB_FAIL(merge_cmp_.cmp(head, winner, order))) {
+        } else if (order <= 0) {
+          if (order < 0) {
+            winner = head;
+            matching = 0;
+          }
+          next_round_iter_idxes_[matching++] = i;
+        }
+      }
+    }
+    if (OB_SUCC(ret)) {
+      if (winner.iter_idx_ < 0) {
+        ret = OB_ITER_END;
+      } else if (active == 1) {
+        PostingBatch &batch = postings_[winner.iter_idx_];
+        if (membership_min_matches_ > 1) {
+          batch.pos_ = batch.size_;
+        } else {
+          while (OB_SUCC(ret) && count < capacity && batch.pos_ < batch.size_) {
+            ret = cache_result(count, batch.ids_[batch.pos_++].get_datum(), 1.0);
+          }
+        }
+      } else {
+        if (matching >= membership_min_matches_) {
+          ret = cache_result(count, *iter_domain_ids_[winner.iter_idx_], static_cast<double>(matching));
+        }
+        for (int64_t i = 0; i < matching; ++i) {
+          ++postings_[next_round_iter_idxes_[i]].pos_;
+        }
+      }
     }
   }
   return ret;

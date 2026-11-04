@@ -65,12 +65,21 @@ public:
   virtual void reset() override;
 protected:
   virtual int pre_process() override;
+  virtual int merge_rows(const int64_t capacity, int64_t &count) override;
   virtual int do_one_merge_round(int64_t &count) override;
 protected:
   ObBM25ParamEstimator bm25_param_estimator_;
   sql::ObMatchAgainstMode mode_flag_;
   bool function_lookup_mode_;
   int64_t membership_min_matches_ = -1;
+  static constexpr int64_t MAX_SHORT_STREAMS = 4;
+  struct PostingBatch {
+    const ObDocIdExt *ids_ = nullptr;
+    int64_t size_ = 0;
+    int64_t pos_ = 0;
+    bool end_ = false;
+  };
+  PostingBatch postings_[MAX_SHORT_STREAMS];
 private:
   DISALLOW_COPY_AND_ASSIGN(ObTextDaaTIter);
 };

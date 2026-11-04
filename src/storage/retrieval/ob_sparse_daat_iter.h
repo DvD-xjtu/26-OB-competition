@@ -85,6 +85,7 @@ public:
       K_(next_round_iter_idxes), K_(next_round_cnt));
 protected:
   virtual int pre_process();
+  virtual int merge_rows(const int64_t capacity, int64_t &count);
   virtual int do_one_merge_round(int64_t &count);
   virtual int fill_merge_heap();
   virtual int collect_dims_by_id(const ObDatum *&id_datum, double &relevance, bool &got_valid_id);

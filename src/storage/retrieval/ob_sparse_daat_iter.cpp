@@ -232,18 +232,22 @@ int ObSRDaaTIterImpl::get_next_rows(const int64_t capacity, int64_t &count)
   } else {
     count = 0;
     const int64_t real_capacity = MIN(capacity, iter_param_->max_batch_size_);
-    while (OB_SUCC(ret) && count < real_capacity) {
-      if (OB_FAIL(do_one_merge_round(count))) {
-        if (OB_UNLIKELY(OB_ITER_END != ret)) {
-        }
-      }
-    }
+    ret = merge_rows(real_capacity, count);
 
     if (OB_SUCC(ret) || OB_ITER_END == ret) {
       if (count > 0 && OB_FAIL(project_results(count))) {
       }
     }
 
+  }
+  return ret;
+}
+
+int ObSRDaaTIterImpl::merge_rows(const int64_t capacity, int64_t &count)
+{
+  int ret = OB_SUCCESS;
+  while (OB_SUCC(ret) && count < capacity) {
+    ret = do_one_merge_round(count);
   }
   return ret;
 }
