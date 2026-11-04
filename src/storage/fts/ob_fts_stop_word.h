@@ -87,6 +87,8 @@ private:
 
   StopWordSet stopword_set_;
   ObObjMeta stopword_type_;
+  uint32_t ascii_prefixes_[26] = {};
+  bool can_filter_ascii_prefix_ = false;
 
   bool inited_ = false;
 

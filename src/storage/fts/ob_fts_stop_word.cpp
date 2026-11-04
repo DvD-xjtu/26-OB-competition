@@ -29,6 +29,12 @@ namespace storage
 
 ////////////////////////////////////////////////////////////////////////////////
 // class ObStopWordChecker
+static int ascii_letter_index(unsigned char c)
+{
+  const int lower = c | 0x20;
+  return lower >= 'a' && lower <= 'z' ? lower - 'a' : -1;
+}
+
 ObStopWordChecker::~ObStopWordChecker()
 {
   destroy();
@@ -49,9 +55,21 @@ int ObStopWordChecker::init()
     stop_meta.set_collation_type(ObCollationType::CS_TYPE_UTF8MB4_GENERAL_CI);
 
     stopword_type_.set_meta(stop_meta);
+    MEMSET(ascii_prefixes_, 0, sizeof(ascii_prefixes_));
+    can_filter_ascii_prefix_ = true;
     const int64_t stopword_count = sizeof(ob_stop_word_list) / sizeof(ob_stop_word_list[0]);
     for (int64_t i = 0; OB_SUCC(ret) && i < stopword_count; ++i) {
-      ObFTWord stopword(STRLEN(ob_stop_word_list[i]), ob_stop_word_list[i], stopword_type_);
+      const char *text = ob_stop_word_list[i];
+      const int64_t length = STRLEN(text);
+      for (int64_t j = 0; j < length; ++j) {
+        if (ascii_letter_index(text[j]) < 0) {
+          can_filter_ascii_prefix_ = false;
+        }
+      }
+      if (can_filter_ascii_prefix_ && length >= 2) {
+        ascii_prefixes_[ascii_letter_index(text[0])] |= 1U << ascii_letter_index(text[1]);
+      }
+      ObFTWord stopword(length, text, stopword_type_);
       if (OB_FAIL(stopword_set_.set_refactored(stopword))) {
       }
     }
@@ -97,6 +115,16 @@ int ObStopWordChecker::check_stopword(const ObFTWord &word, bool &is_stopword)
 
 int ObStopWordChecker::contains_utf8(const ObString &text, bool &is_stopword)
 {
+  // In utf8mb4_general_ci each leading ASCII letter has its own folded
+  // weight. Two such weights absent from the dictionary exclude a match.
+  if (can_filter_ascii_prefix_ && text.length() >= 2) {
+    const int first = ascii_letter_index(text.ptr()[0]);
+    const int second = ascii_letter_index(text.ptr()[1]);
+    if (first >= 0 && second >= 0 && !(ascii_prefixes_[first] & (1U << second))) {
+      is_stopword = false;
+      return OB_SUCCESS;
+    }
+  }
   ObFTWord key(text.length(), text.ptr(), stopword_type_);
   int ret = stopword_set_.exist_refactored(key);
   if (ret == OB_HASH_EXIST || ret == OB_HASH_NOT_EXIST) {
