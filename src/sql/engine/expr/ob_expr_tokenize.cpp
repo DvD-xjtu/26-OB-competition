@@ -15,6 +15,8 @@
  */
 
 #include "sql/engine/expr/ob_expr_tokenize.h"
+#include "sql/session/ob_sql_session_info.h"
+#include "lib/oblog/ob_warning_buffer.h"
 
 #include "lib/alloc/alloc_struct.h"
 #include "lib/allocator/page_arena.h"
@@ -50,6 +52,70 @@ ObExprTokenize::ObExprTokenize(common::ObIAllocator &alloc)
 
 ObExprTokenize::~ObExprTokenize() {}
 
+namespace
+{
+// A single entry is private to a worker and to one session identity. Only
+// bounded raw JSON bytes are retained, never an allocator pointer or a LOB locator.
+struct BengMemo {
+  static constexpr int32_t MAX_TEXT = 512;
+  static constexpr int32_t MAX_JSON = 2048;
+  uintptr_t owner_ = 0;
+  uint32_t sid_ = 0;
+  int64_t session_created_ = 0;
+  uint64_t user_ = 0;
+  uint64_t effective_user_ = 0;
+  int64_t parser_version_ = 0;
+  common::ObCollationType collation_ = common::CS_TYPE_INVALID;
+  int32_t text_length_ = 0;
+  int32_t json_length_ = 0;
+  char text_[MAX_TEXT];
+  char json_[MAX_JSON];
+
+  bool matches(const ObSQLSessionInfo &session, const int64_t version,
+               const common::ObCollationType cs, const ObString &text) const
+  {
+    return json_length_ > 0 && owner_ == reinterpret_cast<uintptr_t>(&session) && sid_ == session.get_sid() && session_created_ == session.get_sess_create_time()
+        && user_ == session.get_user_id() && effective_user_ == session.get_priv_user_id()
+        && parser_version_ == version && collation_ == cs && text_length_ == text.length()
+        && MEMCMP(text_, text.ptr(), text_length_) == 0;
+  }
+
+  void save(const ObSQLSessionInfo &session, const int64_t version,
+            const common::ObCollationType cs, const ObString &text, const ObString &raw)
+  {
+    if (raw.length() > 0 && raw.length() <= MAX_JSON) {
+      owner_ = reinterpret_cast<uintptr_t>(&session);
+      sid_ = session.get_sid();
+      session_created_ = session.get_sess_create_time();
+      user_ = session.get_user_id();
+      effective_user_ = session.get_priv_user_id();
+      parser_version_ = version;
+      collation_ = cs;
+      text_length_ = text.length();
+      MEMCPY(text_, text.ptr(), text_length_);
+      json_length_ = raw.length();
+      MEMCPY(json_, raw.ptr(), json_length_);
+    }
+  }
+};
+
+static thread_local BengMemo beng_memo;
+
+bool short_ascii_text(const ObString &text)
+{
+  if (text.empty() || text.length() > BengMemo::MAX_TEXT) {
+    return false;
+  }
+  for (int32_t i = 0; i < text.length(); ++i) {
+    const unsigned char c = static_cast<unsigned char>(text.ptr()[i]);
+    if (c < 0x20 || c >= 0x7f) {
+      return false;
+    }
+  }
+  return true;
+}
+} // anonymous namespace
+
 int ObExprTokenize::eval_tokenize(const ObExpr &expr, ObEvalCtx &ctx, ObDatum &expr_datum)
 {
   int ret = OB_SUCCESS;
@@ -64,12 +130,39 @@ int ObExprTokenize::eval_tokenize(const ObExpr &expr, ObEvalCtx &ctx, ObDatum &e
   if (OB_UNLIKELY(expr.arg_cnt_ < 1 || expr.arg_cnt_ > 3)) {
     ret = OB_INVALID_ARGUMENT;
   } else if (OB_FAIL(parse_param(expr, ctx, temp_allocator, param))) {
-  } else if (OB_FAIL(tokenize_fulltext(param, param.output_mode_, temp_allocator, json_result))) {
-  } else if (OB_FAIL(ObJsonExprHelper::pack_json_res(expr,
-                                                     ctx,
-                                                     temp_allocator,
-                                                     json_result,
-                                                     expr_datum))) {
+  } else {
+    const ObSQLSessionInfo *session = ctx.exec_ctx_.get_my_session();
+    const ObCollationType cs = param.meta_.get_collation_type();
+    const int64_t version = param.parser_.get_parser_version();
+    ObWarningBuffer *warnings = ob_get_tsi_warning_buffer();
+    // With exactly two arguments the builtin BENG parameters are the fixed
+    // defaults and the output is a JSON array. Other forms follow the normal path.
+    const bool eligible = expr.arg_cnt_ == 2 && param.parser_.is_beng()
+        && param.output_mode_ == TokenizeParam::OUTPUT_MODE::DEFAULT && param.properties_.empty()
+        && (cs == CS_TYPE_UTF8MB4_BIN || cs == CS_TYPE_UTF8MB4_GENERAL_CI)
+        && session != nullptr && warnings != nullptr && warnings->get_total_warning_count() == 0
+        && short_ascii_text(param.fulltext_);
+    if (eligible && beng_memo.matches(*session, version, cs, param.fulltext_)) {
+      // Do not lend thread-local storage to code that can allocate or yield.
+      char private_copy[BengMemo::MAX_JSON];
+      const int32_t length = beng_memo.json_length_;
+      MEMCPY(private_copy, beng_memo.json_, length);
+      ObString raw(length, private_copy);
+      storage::ObFTParseHelper helper;
+      if (OB_FAIL(helper.init_from_tree(&temp_allocator, param.parser_, param.validated_properties_))) {
+      } else if (OB_FAIL(ObJsonExprHelper::pack_json_str_res(expr, ctx, expr_datum, raw))) {
+      }
+    } else if (OB_FAIL(tokenize_fulltext(param, param.output_mode_, temp_allocator, json_result))) {
+    } else if (!eligible) {
+      ret = ObJsonExprHelper::pack_json_res(expr, ctx, temp_allocator, json_result, expr_datum);
+    } else {
+      ObString raw;
+      if (OB_FAIL(share::ObJsonWrapper::get_raw_binary(json_result, raw, &temp_allocator))) {
+      } else if (OB_FAIL(ObJsonExprHelper::pack_json_str_res(expr, ctx, expr_datum, raw))) {
+      } else if (ob_get_tsi_warning_buffer() == warnings && warnings->get_total_warning_count() == 0) {
+        beng_memo.save(*session, version, cs, param.fulltext_, raw);
+      }
+    }
   }
 
   return ret;
