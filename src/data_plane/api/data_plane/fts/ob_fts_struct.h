@@ -103,6 +103,7 @@ public:
   bool created() const { return heads_.count() != 0; }
   int64_t size() const { return entries_.count(); }
   void reuse();
+  void release_document();
   const_iterator begin() const { return const_iterator(*this, 0); }
   const_iterator end() const { return const_iterator(*this, heads_.count()); }
 

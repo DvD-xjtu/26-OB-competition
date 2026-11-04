@@ -79,7 +79,11 @@ int ObFTIndexRowCache::init(
     ret = OB_INIT_TWICE;
   } else if (OB_FAIL(CURRENT_CONTEXT->CREATE_CONTEXT(merge_memctx_, param))) {
   } else if (OB_FAIL(helper_.init(&(merge_memctx_->get_arena_allocator()), parser_name, parser_properties))) {
+  } else if (OB_ISNULL(cursor_ = OB_NEWx(DocumentCursor, &merge_memctx_->get_malloc_allocator()))) {
+    ret = OB_ALLOCATE_MEMORY_FAILED;
+  } else if (OB_FAIL(cursor_->row_.init(merge_memctx_->get_malloc_allocator(), 4))) {
   } else {
+    cursor_->next_ = cursor_->words_.end();
     is_fts_index_aux_ = is_fts_index_aux;
     is_inited_ = true;
   }
@@ -108,15 +112,12 @@ int ObFTIndexRowCache::segment(const common::ObObjMeta &ft_obj_meta,
       ret = OB_INVALID_ARGUMENT;
     } else if (fulltext.empty()) {
       ret = OB_ITER_END;
-    } else if (OB_ISNULL(cursor_ = OB_NEWx(DocumentCursor, &allocator))) {
-      ret = OB_ALLOCATE_MEMORY_FAILED;
     } else if (OB_FAIL(cursor_->words_.create(buckets, ObMemAttr("FTWordMap")))) {
     } else if (OB_FAIL(ob_write_string(allocator, fulltext, owned_text))) {
     } else if (OB_FAIL(helper_.segment(ft_obj_meta, owned_text.ptr(), owned_text.length(),
                                        doc_length, cursor_->words_))) {
     } else if (cursor_->words_.size() == 0) {
       ret = OB_ITER_END;
-    } else if (OB_FAIL(cursor_->row_.init(allocator, 4))) {
     } else if (OB_FAIL(owned_id.deep_copy(doc_id_datum, allocator))) {
     } else {
       cursor_->row_.storage_datums_[doc_id_idx].shallow_copy_from_datum(owned_id);
@@ -147,7 +148,11 @@ int ObFTIndexRowCache::get_next_row(blocksstable::ObDatumRow *&row)
 
 void ObFTIndexRowCache::reset()
 {
-  reuse();
+  if (cursor_ != nullptr) {
+    cursor_->~DocumentCursor();
+    merge_memctx_->get_malloc_allocator().free(cursor_);
+    cursor_ = nullptr;
+  }
   is_fts_index_aux_ = true;
   helper_.reset();
   if (OB_NOT_NULL(merge_memctx_)) {
@@ -160,8 +165,9 @@ void ObFTIndexRowCache::reset()
 void ObFTIndexRowCache::reuse()
 {
   if (cursor_ != nullptr) {
-    cursor_->~DocumentCursor();
-    cursor_ = nullptr;
+    cursor_->row_.reuse();
+    cursor_->words_.release_document();
+    cursor_->next_ = cursor_->words_.end();
   }
   if (OB_NOT_NULL(merge_memctx_)) {
     merge_memctx_->reset_remain_one_page();

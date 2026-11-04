@@ -55,6 +55,20 @@ void ObFTWordMap::reuse()
   }
 }
 
+void ObFTWordMap::release_document()
+{
+  // Drop all references to the previous document before its arena is reset.
+  // Retain at most one allocator block per array across documents.
+  heads_.reuse();
+  entries_.reuse();
+  if (heads_.get_data_size() > heads_.get_block_size()) {
+    heads_.reset();
+  }
+  if (entries_.get_data_size() > entries_.get_block_size()) {
+    entries_.reset();
+  }
+}
+
 int ObFTWordMap::add(const ObFTWord &word, int64_t frequency, bool group)
 {
   int ret = OB_SUCCESS;
