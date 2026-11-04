@@ -57,6 +57,7 @@ def run(connection, check_plan=False):
                 limited = "SELECT id FROM docs WHERE MATCH(txt) AGAINST('alpha beta') LIMIT 7"
                 plan = explain("SELECT COUNT(*) FROM (" + limited + ") v")
                 assert "calc_relevance=false" in plan and "sort_keys([match" not in plan, plan
+                assert "is_index_back=false" in plan, plan
                 cur.execute("SELECT COUNT(*) FROM (" + limited + ") v")
                 assert cur.fetchone()[0] == 7
                 for sql in (limited, "SELECT MAX(id) FROM (" + limited + ") v",

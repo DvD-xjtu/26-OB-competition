@@ -4001,12 +4001,27 @@ int ObTransformPreProcess::preserve_order_for_fulltext_search(ObDMLStmt *stmt,
       }
     }
   }
-  if (OB_SUCC(ret) && nullptr != match_expr && !static_cast<ObMatchFunRawExpr*>(match_expr)->is_es_match()
-      && !(stmt->is_select_stmt() && is_counted_match_view(parent, *static_cast<const ObSelectStmt *>(stmt)))) {
-    OrderItem item(match_expr, default_desc_direction());
-    if (OB_FAIL(stmt->add_order_item(item))) {
+  if (OB_SUCC(ret) && nullptr != match_expr && !static_cast<ObMatchFunRawExpr*>(match_expr)->is_es_match()) {
+    if (stmt->is_select_stmt() && is_counted_match_view(parent, *static_cast<ObSelectStmt *>(stmt))) {
+      // Only the row count escapes this view. Projecting an unused base column
+      // would still force one table lookup per result from the inverted index.
+      ObSelectStmt &view = *static_cast<ObSelectStmt *>(stmt);
+      ObConstRawExpr *one = nullptr;
+      for (int64_t i = 0; OB_SUCC(ret) && i < view.get_select_item_size(); ++i) {
+        SelectItem &item = view.get_select_item(i);
+        if (item.expr_->is_column_ref_expr()) {
+          if (one == nullptr && OB_FAIL(ObRawExprUtils::build_const_int_expr(*ctx_->expr_factory_, ObIntType, 1, one))) {
+          } else {
+            item.expr_ = one;
+            trans_happened = true;
+          }
+        }
+      }
     } else {
-      trans_happened = true;
+      OrderItem order(match_expr, default_desc_direction());
+      if (OB_SUCC(ret = stmt->add_order_item(order))) {
+        trans_happened = true;
+      }
     }
   } 
   return ret;
