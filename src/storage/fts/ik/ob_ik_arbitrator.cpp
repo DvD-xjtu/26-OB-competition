@@ -43,14 +43,32 @@ int ObIKArbitrator::process(TokenizeContext &ctx)
   for (auto next = tokens.begin(); OB_SUCC(ret) && next != tokens.end();) {
     TokenRange range{next, next};
     int64_t end_offset = (*next).offset_ + (*next).length_;
+    int64_t common_end = end_offset;
+    auto best_single = next;
+    bool all_overlap = ctx.is_smart();
     ++next;
     const bool ambiguous = next != tokens.end() && (*next).offset_ < end_offset;
     while (next != tokens.end() && (*next).offset_ < end_offset) {
-      end_offset = MAX(end_offset, (*next).offset_ + (*next).length_);
+      const int64_t token_end = (*next).offset_ + (*next).length_;
+      end_offset = MAX(end_offset, token_end);
+      if (all_overlap && (*next).offset_ >= common_end) {
+        all_overlap = false;
+      } else if (all_overlap) {
+        common_end = MIN(common_end, token_end);
+        if ((*next).length_ > (*best_single).length_
+            || ((*next).length_ == (*best_single).length_ && (*next).offset_ > (*best_single).offset_)) {
+          best_single = next;
+        }
+      }
       ++next;
     }
     range.end_ = next;
-    if (ambiguous && ctx.is_smart()) {
+    if (ambiguous && all_overlap) {
+      // Every candidate contains the same byte, so no two may coexist.
+      // For a one-token chain better_than compares length, then end offset.
+      range.begin_ = best_single;
+      range.end_ = ++best_single;
+    } else if (ambiguous && ctx.is_smart()) {
       ObIKTokenChain *best = nullptr;
       if (OB_FAIL(optimize(range, best))) {
       } else {
