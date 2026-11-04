@@ -19,6 +19,7 @@
 
 #include "lib/charset/ob_charset.h"
 #include "lib/hash/ob_hashmap.h"
+#include "lib/container/ob_se_array.h"
 #include "object/ob_object.h"
 #include "share/datum/ob_datum_funcs.h"
 
@@ -51,7 +52,64 @@ private:
   ObObjMeta meta_;
 };
 
-typedef common::hash::ObHashMap<ObFTWord, int64_t> ObFTWordMap;
+// A histogram is owned by a single segment() caller and only lives for the
+// current document. Keep its bucket chains in contiguous arrays, with inline
+// space for short inputs. Link by index so that growing the arrays is safe.
+class ObFTWordMap final
+{
+public:
+  struct Entry
+  {
+    ObFTWord first;
+    int64_t second;
+    int64_t next;
+  };
+
+  class const_iterator
+  {
+  public:
+    const_iterator() = default;
+    const_iterator(const ObFTWordMap &map, int64_t bucket)
+      : map_(&map), bucket_(bucket) { find_bucket(); }
+    const Entry *operator->() const { return &map_->entries_.at(entry_); }
+    bool operator==(const const_iterator &other) const
+    { return map_ == other.map_ && entry_ == other.entry_; }
+    bool operator!=(const const_iterator &other) const { return !(*this == other); }
+    const_iterator &operator++()
+    {
+      entry_ = map_->entries_.at(entry_).next;
+      if (entry_ < 0) {
+        ++bucket_;
+        find_bucket();
+      }
+      return *this;
+    }
+
+  private:
+    void find_bucket()
+    {
+      while (bucket_ < map_->heads_.count() && map_->heads_.at(bucket_) < 0) {
+        ++bucket_;
+      }
+      if (bucket_ < map_->heads_.count()) { entry_ = map_->heads_.at(bucket_); }
+    }
+    const ObFTWordMap *map_ = nullptr;
+    int64_t bucket_ = 0;
+    int64_t entry_ = -1;
+  };
+
+  int create(int64_t bucket_count, const common::ObMemAttr &attr);
+  int add(const ObFTWord &word, int64_t frequency, bool group);
+  bool created() const { return heads_.count() != 0; }
+  int64_t size() const { return entries_.count(); }
+  void reuse();
+  const_iterator begin() const { return const_iterator(*this, 0); }
+  const_iterator end() const { return const_iterator(*this, heads_.count()); }
+
+private:
+  common::ObSEArray<int64_t, 64> heads_;
+  common::ObSEArray<Entry, 16> entries_;
+};
 
 class ObAddWordFlag final
 {

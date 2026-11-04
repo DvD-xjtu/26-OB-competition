@@ -413,37 +413,46 @@ int ObSRDaaTIterImpl::project_results(const int64_t count)
   ObExpr *relevance_proj_expr = iter_param_->relevance_proj_expr_;
   ObExpr *id_proj_expr = iter_param_->id_proj_expr_;
   ObEvalCtx *eval_ctx = iter_param_->eval_ctx_;
-  ObEvalCtx::BatchInfoScopeGuard guard(*eval_ctx);
-
   if (eval_ctx->is_vectorized()) {
-    sql::ObBitVector &id_evaluated_flags = id_proj_expr->get_evaluated_flags(*eval_ctx);
-    for (int64_t i = 0; i < count; ++i) {
-      guard.set_batch_idx(i);
-      ObDatum &id_proj_datum = id_proj_expr->locate_datum_for_write(*eval_ctx);
-      set_datum_func_(id_proj_datum, buffered_domain_ids_[i]);
-      id_evaluated_flags.set(i);
-      id_proj_expr->set_evaluated_projected(*eval_ctx);
-    }
-    if (iter_param_->need_project_relevance()) {
-      sql::ObBitVector &relevance_evaluated_flags = relevance_proj_expr->get_evaluated_flags(*eval_ctx);
-      for (int64_t i = 0; i < count; ++i) {
-        guard.set_batch_idx(i);
-        ObDatum &relevance_proj_datum = relevance_proj_expr->locate_datum_for_write(*eval_ctx);
-        relevance_proj_datum.set_double(buffered_relevances_[i]);
-        relevance_evaluated_flags.set(i);
-        relevance_proj_expr->set_evaluated_projected(*eval_ctx);
+    // The merge result is dense. Resolve destination frames once and publish
+    // evaluation flags for the batch after filling them. A scalar expression
+    // broadcasts slot 0, which previously retained the last projected value.
+    const int64_t id_slots = id_proj_expr->is_batch_result() ? count : 1;
+    if (set_datum_func_ == set_datum_int) {
+      ObDatum *dst = id_proj_expr->locate_datums_for_update(*eval_ctx, id_slots);
+      for (int64_t i = 0; i < id_slots; ++i) {
+        set_datum_int(dst[i], buffered_domain_ids_[count - id_slots + i]);
       }
+    } else {
+      ObDatum *dst = id_proj_expr->locate_batch_datums(*eval_ctx);
+      for (int64_t i = 0; i < id_slots; ++i) {
+        set_datum_shallow(dst[i], buffered_domain_ids_[count - id_slots + i]);
+      }
+    }
+    id_proj_expr->get_evaluated_flags(*eval_ctx).set_all(count);
+    id_proj_expr->set_evaluated_projected(*eval_ctx);
+    if (iter_param_->need_project_relevance()) {
+      const int64_t slots = relevance_proj_expr->is_batch_result() ? count : 1;
+      ObDatum *dst = relevance_proj_expr->locate_datums_for_update(*eval_ctx, slots);
+      for (int64_t i = 0; i < slots; ++i) {
+        dst[i].set_double(buffered_relevances_[count - slots + i]);
+      }
+      relevance_proj_expr->get_evaluated_flags(*eval_ctx).set_all(count);
+      relevance_proj_expr->set_evaluated_projected(*eval_ctx);
     }
   } else if (OB_UNLIKELY(1 != count)) {
     ret = OB_ERR_UNEXPECTED;
   } else {
+    ObEvalCtx::BatchInfoScopeGuard guard(*eval_ctx);
     guard.set_batch_idx(0);
     ObDatum &id_proj_datum = id_proj_expr->locate_datum_for_write(*eval_ctx);
     set_datum_func_(id_proj_datum, buffered_domain_ids_[0]);
     id_proj_expr->set_evaluated_projected(*eval_ctx);
-    ObDatum &relevance_proj_datum = relevance_proj_expr->locate_datum_for_write(*eval_ctx);
-    relevance_proj_datum.set_double(buffered_relevances_[0]);
-    relevance_proj_expr->set_evaluated_projected(*eval_ctx);
+    if (iter_param_->need_project_relevance()) {
+      ObDatum &relevance_proj_datum = relevance_proj_expr->locate_datum_for_write(*eval_ctx);
+      relevance_proj_datum.set_double(buffered_relevances_[0]);
+      relevance_proj_expr->set_evaluated_projected(*eval_ctx);
+    }
   }
   return ret;
 }

@@ -43,9 +43,19 @@ ObObjDatumMapType ObFTIndexRowCache::FTS_DOC_WORD_TYPES[] = {OBJ_DATUM_STRING, O
 ObExprOperatorType ObFTIndexRowCache::FTS_INDEX_EXPR_TYPE[] = {T_FUN_SYS_WORD_SEGMENT, T_FUN_SYS_DOC_ID, T_FUN_SYS_WORD_COUNT, T_FUN_SYS_DOC_LENGTH};
 ObExprOperatorType ObFTIndexRowCache::FTS_DOC_WORD_EXPR_TYPE[] = {T_FUN_SYS_DOC_ID, T_FUN_SYS_WORD_SEGMENT, T_FUN_SYS_WORD_COUNT, T_FUN_SYS_DOC_LENGTH};
 
+// DDL consumes one posting at a time, immediately projecting the four cells.
+// Keep the grouped words and a single output row alive until the next source
+// document. DML still materializes its simultaneous old/new row sets.
+struct ObFTIndexRowCache::DocumentCursor
+{
+  ObFTWordMap words_;
+  ObFTWordMap::const_iterator next_;
+  blocksstable::ObDatumRow row_;
+};
+
 ObFTIndexRowCache::ObFTIndexRowCache()
-  : rows_(),
-    row_idx_(0),
+  : merge_memctx_(nullptr),
+    cursor_(nullptr),
     is_fts_index_aux_(true),
     helper_(),
     is_inited_(false)
@@ -70,7 +80,6 @@ int ObFTIndexRowCache::init(
   } else if (OB_FAIL(CURRENT_CONTEXT->CREATE_CONTEXT(merge_memctx_, param))) {
   } else if (OB_FAIL(helper_.init(&(merge_memctx_->get_arena_allocator()), parser_name, parser_properties))) {
   } else {
-    row_idx_ = 0;
     is_fts_index_aux_ = is_fts_index_aux;
     is_inited_ = true;
   }
@@ -87,40 +96,58 @@ int ObFTIndexRowCache::segment(const common::ObObjMeta &ft_obj_meta,
   int ret = OB_SUCCESS;
   if (OB_UNLIKELY(!is_inited_)) {
     ret = OB_NOT_INIT;
-  } else if (FALSE_IT(reuse())) {
-  } else if (OB_FAIL(ObDASDomainUtils::generate_fulltext_word_rows(merge_memctx_->get_arena_allocator(),
-                                                                   &helper_,
-                                                                   ft_obj_meta,
-                                                                   doc_id_datum,
-                                                                   fulltext,
-                                                                   is_fts_index_aux_,
-                                                                   rows_))) {
   } else {
-    row_idx_ = 0;
+    reuse();
+    ObIAllocator &allocator = merge_memctx_->get_arena_allocator();
+    const int64_t buckets = MIN(MAX(fulltext.length() / 10, 2), 997);
+    const int64_t doc_id_idx = is_fts_index_aux_ ? 1 : 0;
+    int64_t doc_length = 0;
+    ObString owned_text;
+    ObDatum owned_id;
+    if (OB_UNLIKELY(!ft_obj_meta.is_valid())) {
+      ret = OB_INVALID_ARGUMENT;
+    } else if (fulltext.empty()) {
+      ret = OB_ITER_END;
+    } else if (OB_ISNULL(cursor_ = OB_NEWx(DocumentCursor, &allocator))) {
+      ret = OB_ALLOCATE_MEMORY_FAILED;
+    } else if (OB_FAIL(cursor_->words_.create(buckets, ObMemAttr("FTWordMap")))) {
+    } else if (OB_FAIL(ob_write_string(allocator, fulltext, owned_text))) {
+    } else if (OB_FAIL(helper_.segment(ft_obj_meta, owned_text.ptr(), owned_text.length(),
+                                       doc_length, cursor_->words_))) {
+    } else if (cursor_->words_.size() == 0) {
+      ret = OB_ITER_END;
+    } else if (OB_FAIL(cursor_->row_.init(allocator, 4))) {
+    } else if (OB_FAIL(owned_id.deep_copy(doc_id_datum, allocator))) {
+    } else {
+      cursor_->row_.storage_datums_[doc_id_idx].shallow_copy_from_datum(owned_id);
+      cursor_->row_.storage_datums_[3].set_uint(doc_length);
+      cursor_->next_ = cursor_->words_.begin();
+    }
+    if (OB_FAIL(ret)) {
+      reuse();
+    }
   }
-  LOG_TRACE("word segment", K(ret), K(row_idx_), K(rows_.count()), K(doc_id_datum), K(fulltext));
   return ret;
 }
 
 int ObFTIndexRowCache::get_next_row(blocksstable::ObDatumRow *&row)
 {
-  int ret = OB_SUCCESS;
   if (OB_UNLIKELY(!is_inited_)) {
-    ret = OB_NOT_INIT;
-  } else if (row_idx_ >= rows_.count()) {
-    ret = OB_ITER_END;
+    return OB_NOT_INIT;
+  } else if (cursor_ == nullptr || cursor_->next_ == cursor_->words_.end()) {
+    return OB_ITER_END;
   } else {
-    row = (rows_[row_idx_]);
-    ++row_idx_;
+    row = &cursor_->row_;
+    row->storage_datums_[is_fts_index_aux_ ? 0 : 1].set_datum(cursor_->next_->first.get_word());
+    row->storage_datums_[2].set_uint(cursor_->next_->second);
+    ++cursor_->next_;
+    return OB_SUCCESS;
   }
-  LOG_TRACE("get next row", K(ret), KPC(row), K(row_idx_), K(rows_.count()));
-  return ret;
 }
 
 void ObFTIndexRowCache::reset()
 {
-  rows_.reset();
-  row_idx_ = 0;
+  reuse();
   is_fts_index_aux_ = true;
   helper_.reset();
   if (OB_NOT_NULL(merge_memctx_)) {
@@ -132,8 +159,10 @@ void ObFTIndexRowCache::reset()
 
 void ObFTIndexRowCache::reuse()
 {
-  rows_.reuse();
-  row_idx_ = 0;
+  if (cursor_ != nullptr) {
+    cursor_->~DocumentCursor();
+    cursor_ = nullptr;
+  }
   if (OB_NOT_NULL(merge_memctx_)) {
     merge_memctx_->reset_remain_one_page();
   }

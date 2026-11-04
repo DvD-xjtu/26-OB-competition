@@ -16,6 +16,8 @@
 
 #include "data_plane/fts/ob_fts_struct.h"
 
+#include <algorithm>
+
 #include "lib/charset/ob_charset.h"
 #include "share/datum/ob_datum_funcs.h"
 #include "storage/ob_storage_util.h"
@@ -24,6 +26,68 @@ namespace oceanbase
 {
 namespace storage
 {
+
+int ObFTWordMap::create(int64_t bucket_count, const common::ObMemAttr &attr)
+{
+  int ret = OB_SUCCESS;
+  if (bucket_count <= 0) {
+    ret = OB_INVALID_ARGUMENT;
+  } else if (created()) {
+    ret = OB_INIT_TWICE;
+  } else {
+    heads_.set_attr(attr);
+    entries_.set_attr(attr);
+    // Match ObHashMap's bucket selection and head insertion order so JSON
+    // output and query-token order stay identical even for hash collisions.
+    if (OB_FAIL(heads_.prepare_allocate(common::hash::cal_next_prime(bucket_count)))) {
+    } else {
+      std::fill_n(&heads_.at(0), heads_.count(), int64_t(-1));
+    }
+  }
+  return ret;
+}
+
+void ObFTWordMap::reuse()
+{
+  if (size() != 0) {
+    entries_.reuse();
+    std::fill_n(&heads_.at(0), heads_.count(), int64_t(-1));
+  }
+}
+
+int ObFTWordMap::add(const ObFTWord &word, int64_t frequency, bool group)
+{
+  int ret = OB_SUCCESS;
+  uint64_t hash = 0;
+  if (!created()) {
+    ret = OB_NOT_INIT;
+  } else if (OB_FAIL(word.hash(hash))) {
+  } else {
+    const int64_t bucket = hash % heads_.count();
+    int64_t idx = heads_.at(bucket);
+    while (idx >= 0 && entries_.at(idx).first != word) {
+      idx = entries_.at(idx).next;
+    }
+    if (idx >= 0) {
+      if (!group) {
+        ret = OB_HASH_EXIST;
+      } else {
+        // The old overwrite operation replaced the key as well: collations
+        // can equate different spellings, and the last spelling is returned.
+        Entry &entry = entries_.at(idx);
+        entry.first = word;
+        entry.second += frequency;
+      }
+    } else {
+      const int64_t new_idx = entries_.count();
+      if (OB_FAIL(entries_.push_back(Entry{word, 1, heads_.at(bucket)}))) {
+      } else {
+        heads_.at(bucket) = new_idx;
+      }
+    }
+  }
+  return ret;
+}
 
 int ObFTWord::hash(uint64_t &hash_val) const
 {

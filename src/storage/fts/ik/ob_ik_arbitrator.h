@@ -42,7 +42,6 @@ private:
   int prepare(TokenizeContext &ctx);
 
   int add_chain(ObIKTokenChain *chain);
-  int find_chain(int64_t offset, ObIKTokenChain *&chain) const;
 
   int optimize(TokenizeContext &ctx,
                ObIKTokenChain *option,

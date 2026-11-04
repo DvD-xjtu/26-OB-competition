@@ -112,7 +112,7 @@ int ObIKArbitrator::output_result(TokenizeContext &ctx)
   int ret = OB_SUCCESS;
 
   int64_t char_len = 0;
-  ObIKTokenChain *chain = nullptr;
+  int64_t chain_idx = 0;
   for (int64_t current = 0; OB_SUCC(ret) && current < ctx.fulltext_len();) {
     ObFTCharUtil::CharType type;
     // maybe not so good to keep single, check it later
@@ -120,15 +120,24 @@ int ObIKArbitrator::output_result(TokenizeContext &ctx)
                                             ctx.fulltext() + current,
                                             ctx.fulltext_len() - current,
                                             char_len))) {
+      break;
     } else if (OB_FAIL(ObFTCharUtil::classify_first_char(ctx.collation(),
                                                          ctx.fulltext() + current,
                                                          char_len,
                                                          type))) {
+      break;
     } else if (ObFTCharUtil::CharType::USELESS == type) {
-      current += char_len; // skip useless char
-    } else if (OB_FAIL(find_chain(current, chain)) && OB_HASH_NOT_EXIST != ret) {
-    } else if (OB_HASH_NOT_EXIST == ret) {
-      ret = OB_SUCCESS;
+      current += char_len;
+      continue;
+    }
+    // Chain starts and emitted chain ends advance monotonically. Walk the
+    // selected chains once instead of searching the array for each character.
+    while (chain_idx < chains_.count() && chains_.at(chain_idx)->min_offset() < current) {
+      ++chain_idx;
+    }
+    ObIKTokenChain *chain = chain_idx < chains_.count()
+            && chains_.at(chain_idx)->min_offset() == current ? chains_.at(chain_idx) : nullptr;
+    if (chain == nullptr) {
       if (!keep_single()) {
         // skip single word
       } else {
@@ -320,23 +329,6 @@ int ObIKArbitrator::add_chain(ObIKTokenChain *chain)
   } else if (OB_FAIL(chains_.push_back(chain))) {
   }
   return ret;
-}
-
-// Non-overlapping chains are emitted in increasing byte-offset order. A small
-// inline array avoids allocating a hash table for every document/segment.
-int ObIKArbitrator::find_chain(int64_t offset, ObIKTokenChain *&chain) const
-{
-  int64_t first = 0, last = chains_.count();
-  while (first < last) {
-    const int64_t mid = first + (last - first) / 2;
-    if (chains_.at(mid)->min_offset() < offset) { first = mid + 1; }
-    else { last = mid; }
-  }
-  if (first == chains_.count() || chains_.at(first)->min_offset() != offset) {
-    return OB_HASH_NOT_EXIST;
-  }
-  chain = chains_.at(first);
-  return OB_SUCCESS;
 }
 
 ObIKArbitrator::~ObIKArbitrator()

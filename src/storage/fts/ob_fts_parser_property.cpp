@@ -25,6 +25,7 @@
 #include "lib/string/ob_string.h"
 #include "lib/utility/ob_macro_utils.h"
 #include "lib/utility/ob_print_utils.h"
+#include "share/ob_errno.h"
 #include "storage/fts/ob_fts_literal.h"
 #include "data_plane/fts/ob_fts_parser_helper.h"
 
@@ -1020,7 +1021,8 @@ int ObFTParserProperty::parse_for_parser_helper(const ObFTParser &parser, const 
   if (OB_FAIL(props.init())) {
   } else if (OB_FAIL(props.parse_from_valid_str(json_str))) {
   } else {
-    ret = load_from_tree(parser, props, json_str.empty());
+    // An empty serialized IK schema must still report its missing mode.
+    ret = load_from_tree(parser, props, json_str.empty() && !parser.is_ik());
   }
   return ret;
 }
@@ -1035,7 +1037,10 @@ int ObFTParserProperty::load_from_tree(const ObFTParser &parser, const ObFTParse
     stopword_table_ = ObString(ObFTSLiteral::CONFIG_NAME_STOPWORD_TABLE);
     quantifier_table_ = ObString(ObFTSLiteral::CONFIG_NAME_QUANTIFIER_TABLE);
     ObString ik_smart;
-    if (OB_FAIL(props.config_get_ik_mode(ik_smart))) {
+    if (use_defaults) {
+      // No additional_args in TOKENIZE: the built-in IK default is smart.
+      ik_mode_smart_ = true;
+    } else if (OB_FAIL(props.config_get_ik_mode(ik_smart))) {
     } else {
       if (0 == ik_smart.case_compare(ObString(ObFTSLiteral::FT_IK_MODE_SMART))) {
         ik_mode_smart_ = true;

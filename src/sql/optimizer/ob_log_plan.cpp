@@ -12188,6 +12188,55 @@ static int match_requires_numeric_score(ObRawExpr *expr, ObRawExpr *match, bool 
   return ret;
 }
 
+// The outer aggregate consumes only the number of rows from this view. For
+// an ordinary LIMIT, that number is independent of the order in which
+// matching documents are visited. Do not apply this to a top-level LIMIT:
+// there the document identities, including implicit relevance order, matter.
+static bool only_counts_limited_view(const ObDMLStmt *root, const ObSelectStmt &view)
+{
+  if (root == nullptr || root == &view || !root->is_select_stmt()
+      || !view.has_limit() || view.get_offset_expr() != nullptr
+      || view.has_fetch() || view.is_fetch_with_ties()
+      || view.get_limit_percent_expr() != nullptr || view.has_order_by()
+      || view.has_group_by() || view.has_having() || view.has_distinct()
+      || view.is_set_stmt() || view.has_window_function() || view.has_window_function_filter()
+      || view.is_contains_assignment() || view.get_semi_info_size() != 0
+      || view.has_for_update() || view.is_calc_found_rows() || !view.is_single_table_stmt()
+      || view.get_subquery_expr_size() != 0 || view.get_condition_size() != 1) {
+    return false;
+  }
+  const ObSelectStmt &outer = *static_cast<const ObSelectStmt *>(root);
+  if (!outer.is_single_table_stmt() || !outer.is_scala_group_by()
+      || outer.get_select_item_size() != 1 || outer.get_aggr_item_size() != 1
+      || outer.get_condition_size() != 0 || outer.has_having() || outer.has_order_by()
+      || outer.has_window_function() || outer.has_window_function_filter() || outer.is_set_stmt()
+      || outer.has_distinct() || outer.has_limit() || outer.has_for_update()
+      || outer.is_contains_assignment() || outer.get_semi_info_size() != 0
+      || outer.get_subquery_expr_size() != 0) {
+    return false;
+  }
+  const TableItem *source = view.get_table_item(0);
+  const TableItem *derived = outer.get_table_item(0);
+  const ObAggFunRawExpr *agg = outer.get_aggr_items().at(0);
+  if (source == nullptr || !source->is_basic_table() || source->is_has_sample_info()
+      || derived == nullptr || !derived->is_generated_table() || derived->cte_type_ != TableItem::NOT_CTE
+      || derived->ref_query_ != &view
+      || agg == nullptr || agg != outer.get_select_item(0).expr_
+      || agg->get_expr_type() != T_FUN_COUNT || agg->get_param_count() != 0) {
+    return false;
+  }
+  // Avoid changing which expressions execute on limited rows (e.g. UDFs
+  // or generated columns that can raise errors).
+  for (int64_t i = 0; i < view.get_select_item_size(); ++i) {
+    const ObRawExpr *expr = view.get_select_item(i).expr_;
+    if (expr == nullptr || !(expr->is_const_raw_expr() ||
+        (expr->is_column_ref_expr() && !static_cast<const ObColumnRefRawExpr *>(expr)->is_generated_column()))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 int ObLogPlan::prepare_text_retrieval_info(const uint64_t ref_table_id,
                                            const uint64_t index_table_id,
                                            ObMatchFunRawExpr *match_against,
@@ -12283,9 +12332,11 @@ int ObLogPlan::prepare_text_retrieval_info(const uint64_t ref_table_id,
     // Scalar aggregates do not observe the implicit relevance ordering. Keep
     // scoring for ranked queries, boolean/boosted search, and any expression
     // that reads the numeric score (including parameterized comparisons).
-    if (has_direct_match_filter && get_stmt()->is_select_stmt()
-        && static_cast<const ObSelectStmt *>(get_stmt())->is_scala_group_by()
-        && !get_stmt()->has_limit() && !get_stmt()->has_order_by()
+    const ObSelectStmt *select = get_stmt()->is_select_stmt()
+        ? static_cast<const ObSelectStmt *>(get_stmt()) : nullptr;
+    if (has_direct_match_filter && select != nullptr
+        && ((select->is_scala_group_by() && !select->has_limit() && !select->has_order_by())
+            || only_counts_limited_view(get_optimizer_context().get_root_stmt(), *select))
         && match_against->get_mode_flag() == NATURAL_LANGUAGE_MODE
         && !match_against->is_es_match()
         && match_against->get_columns_boosts().empty()
