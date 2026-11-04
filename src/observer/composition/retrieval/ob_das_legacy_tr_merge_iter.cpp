@@ -426,6 +426,10 @@ int ObDASLegacyTRMergeIter::create_sparse_retrieval_iter()
       ret = OB_ALLOCATE_MEMORY_FAILED;
     } else if (OB_FAIL(daat_iter->init(iter_param))) {
     } else {
+      if (ir_ctdef_->result_output_.empty() && !function_lookup_mode_ && !topk_mode_
+          && !ir_ctdef_->need_calc_relevance() && !sr_iter_param_.need_filter() && !sr_iter_param_.need_project_relevance()) {
+        daat_iter->omit_id_projection();
+      }
       sparse_retrieval_iter_ = daat_iter;
     }
   } else if (taat_mode_) {

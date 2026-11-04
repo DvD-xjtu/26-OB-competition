@@ -17,6 +17,7 @@
 #define USING_LOG_PREFIX SQL_CG
 #include "ob_tsc_cg_service.h"
 #include "sql/code_generator/ob_static_engine_cg.h"
+#include "sql/optimizer/ob_log_group_by.h"
 #include "sql/engine/table/ob_table_scan_op.h"
 #include "query/vector/ob_vector_index_util.h"
 #include "sql/das/ob_domain_id.h"
@@ -1940,6 +1941,25 @@ int ObTscCgService::generate_text_ir_ctdef(const ObLogTableScan &op,
     } else if (OB_FAIL(append_fts_relavence_project_col(aux_lookup_ctdef, ir_scan_ctdef))) {
     } else {
       root_ctdef = aux_lookup_ctdef;
+    }
+  }
+  // Only the enclosing result loses its ID column. Each inverted-index scan
+  // still reads snapshot-visible IDs to determine membership and duplicates.
+  const ObLogicalOperator *consumer = op.get_parent();
+  if (OB_SUCC(ret) && root_ctdef == ir_scan_ctdef && !tr_info.need_calc_relevance_
+      && tr_info.pushdown_match_filter_ == nullptr && !tr_info.need_sort()
+      && !cg_ctx.is_func_lookup_ && !cg_ctx.is_vec_iter_func_lookup_ && !cg_ctx.is_es_match_ && !cg_ctx.is_merge_fts_index_
+      && !op.get_index_back() && !op.use_index_merge() && !op.is_vec_idx_scan() && !op.is_sample_scan()
+      && op.get_parallel() == 1 && op.get_plan()->get_optimizer_context().is_local_plan()
+      && op.get_limit_expr() == nullptr && op.get_filter_exprs().empty()
+      && op.get_output_exprs().empty() && op.get_access_exprs().empty()
+      && consumer != nullptr && consumer->get_type() == log_op_def::LOG_GROUP_BY
+      && static_cast<const ObLogGroupBy *>(consumer)->get_algo() == SCALAR_AGGREGATE
+      && consumer->get_filter_exprs().empty() && consumer->get_output_exprs().count() == 1) {
+    const ObRawExpr *agg = consumer->get_output_exprs().at(0);
+    if (agg != nullptr && agg->get_expr_type() == T_FUN_COUNT && agg->get_param_count() == 0) {
+      ir_scan_ctdef->result_output_.reuse();
+      LOG_DEBUG("pruned document ID output of local MATCH count");
     }
   }
   return ret;

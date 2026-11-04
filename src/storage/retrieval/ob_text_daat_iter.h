@@ -61,6 +61,7 @@ public:
   virtual ~ObTextDaaTIter() { reset(); }
 
   int init(const ObTextDaaTParam &param);
+  void omit_id_projection() { set_datum_func_ = nullptr; }
   virtual void reuse(const bool switch_tablet = false) override;
   virtual void reset() override;
 protected:

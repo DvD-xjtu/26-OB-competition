@@ -235,7 +235,9 @@ int ObSRDaaTIterImpl::get_next_rows(const int64_t capacity, int64_t &count)
     ret = merge_rows(real_capacity, count);
 
     if (OB_SUCC(ret) || OB_ITER_END == ret) {
-      if (count > 0 && OB_FAIL(project_results(count))) {
+      if (count > 0) {
+        // Preserve a nonempty final batch even if the last posting returned ITER_END.
+        ret = set_datum_func_ == nullptr ? OB_SUCCESS : project_results(count);
       }
     }
 
@@ -400,8 +402,10 @@ int ObSRDaaTIterImpl::cache_result(int64_t &count, const ObDatum &id_datum, cons
   } else if (OB_UNLIKELY(count >= buffered_domain_ids_.count() || count >= buffered_relevances_.count())) {
     ret = OB_INVALID_ARGUMENT;
   } else {
-    buffered_domain_ids_[count].from_datum(id_datum);
-    buffered_relevances_[count] = relevance;
+    if (set_datum_func_ != nullptr) {
+      buffered_domain_ids_[count].from_datum(id_datum);
+      buffered_relevances_[count] = relevance;
+    }
     ++count;
     ++output_row_cnt_;
     if (limit_param->is_valid() && output_row_cnt_ >= limit) {
