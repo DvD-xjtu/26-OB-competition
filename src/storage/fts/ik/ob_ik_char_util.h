@@ -447,6 +447,17 @@ inline int ObFTCharUtil::do_classify(const char *input, const uint8_t char_len, 
   int ret = OB_SUCCESS;
   ob_wc_t unicode = 0;
   type = CharType::USELESS;
+  if (CS_TYPE == CHARSET_UTF8MB4 && input != nullptr && char_len == 1) {
+    const unsigned char byte = input[0];
+    if (byte < 0x80) {
+      if ((byte >= 'A' && byte <= 'Z') || (byte >= 'a' && byte <= 'z')) {
+        type = CharType::ENGLISH_LETTER;
+      } else if (byte >= '0' && byte <= '9') {
+        type = CharType::ARABIC_LETTER;
+      }
+      return OB_SUCCESS;
+    }
+  }
   // Each category uses the same codepoint. Decode once instead of repeating
   // the UTF decoder for every unsuccessful category test.
   if (OB_FAIL(decode_unicode<CS_TYPE>(input, char_len, unicode))) {

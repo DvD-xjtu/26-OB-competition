@@ -26,6 +26,27 @@ namespace oceanbase
 namespace storage
 {
 
+// Reject NUL and non-ASCII without an unpredictable branch for each byte.
+static bool is_beng_ascii(const char *data, int64_t length)
+{
+  const uint64_t high_bits = UINT64_C(0x8080808080808080);
+  const uint64_t low_bits = UINT64_C(0x0101010101010101);
+  while (length >= 8) {
+    uint64_t block;
+    MEMCPY(&block, data, sizeof(block));
+    if (((block | ((block - low_bits) & ~block)) & high_bits) != 0) {
+      return false;
+    }
+    data += 8;
+    length -= 8;
+  }
+  while (length-- > 0) {
+    const unsigned char byte = *data++;
+    if (byte == 0 || byte >= 0x80) { return false; }
+  }
+  return true;
+}
+
 int ObBEngFTParser::get_next_token(
     const char *&word,
     int64_t &word_len,
@@ -100,10 +121,7 @@ int ObBEngFTParser::init(ObFTParserParam *param)
     bool ascii = param->ft_length_ <= 1024 * 1024
         && (param->cs_->number == CS_TYPE_UTF8MB4_BIN
             || param->cs_->number == CS_TYPE_UTF8MB4_GENERAL_CI);
-    for (int64_t i = 0; ascii && i < param->ft_length_; ++i) {
-      const unsigned char ch = static_cast<unsigned char>(param->fulltext_[i]);
-      ascii = ch > 0 && ch < 0x80;
-    }
+    ascii = ascii && is_beng_ascii(param->fulltext_, param->ft_length_);
     if (ascii) {
       // The caller's arena owns returned words beyond this iterator's lifetime,
       // just as it owns the token copies produced by the general pipeline.
