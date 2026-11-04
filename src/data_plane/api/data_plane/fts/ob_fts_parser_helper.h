@@ -161,6 +161,8 @@ public:
       common::ObIAllocator *allocator,
       const common::ObString &parser_name,
       const common::ObString &parser_properties);
+  int init_from_tree(common::ObIAllocator *allocator, const common::ObString &parser_name,
+                     const ObFTParserJsonProps &validated_properties);
   /**
    * Split document into multiple words
    *
@@ -207,6 +209,8 @@ public:
   TO_STRING_KV(KP_(allocator), K_(parser_name), KP_(parser_desc), K_(is_inited));
 
 private:
+  int init_impl(common::ObIAllocator *allocator, const common::ObString &parser_name,
+                const common::ObString &serialized, const ObFTParserJsonProps *validated);
   static int segment(
       const ObFTParserProperty &property,
       const int64_t parser_version,

@@ -74,36 +74,36 @@ void ObStopWordChecker::destroy()
 int ObStopWordChecker::check_stopword(const ObFTWord &word, bool &is_stopword)
 {
   int ret = OB_SUCCESS;
-  
-  
-  common::ObArenaAllocator allocator(lib::ObMemAttr("ChkStopWord"));
   if (OB_UNLIKELY(!inited_)) {
     ret = OB_NOT_INIT;
   } else if (OB_UNLIKELY(word.empty())) {
     ret = OB_INVALID_ARGUMENT;
+  } else if (ObCharset::charset_type_by_coll(word.get_collation_type()) == CHARSET_UTF8MB4) {
+    // For UTF-8 input charset_convert returns the same bytes. Still compare
+    // using the stopword set's collation, independent of the column collation.
+    ret = contains_utf8(word.get_word().get_string(), is_stopword);
   } else {
-    common::ObString cmp_str;
-    // do nothing set out with in if type is the same.
-    if (OB_FAIL(common::ObCharset::charset_convert(
-                                       allocator,
-                                       word.get_word().get_string(),
-                                       word.get_collation_type(),
-                                       stopword_type_.get_collation_type(),
-                                       cmp_str))) {
+    common::ObArenaAllocator allocator(lib::ObMemAttr("ChkStopWord"));
+    ObString converted;
+    if (OB_FAIL(ObCharset::charset_convert(allocator, word.get_word().get_string(),
+                                          word.get_collation_type(),
+                                          stopword_type_.get_collation_type(), converted))) {
     } else {
-      ObFTWord converted(cmp_str.length(), cmp_str.ptr(), stopword_type_);
-      ret = stopword_set_.exist_refactored(converted);
-      if (OB_HASH_NOT_EXIST == ret) {
-        is_stopword = false;
-        ret = OB_SUCCESS;
-      } else if (OB_HASH_EXIST == ret) {
-        is_stopword = true;
-        ret = OB_SUCCESS;
-      } else if (OB_SUCC(ret)) {
-        ret = OB_ERR_UNEXPECTED;
-      } else {
-      }
+      ret = contains_utf8(converted, is_stopword);
     }
+  }
+  return ret;
+}
+
+int ObStopWordChecker::contains_utf8(const ObString &text, bool &is_stopword)
+{
+  ObFTWord key(text.length(), text.ptr(), stopword_type_);
+  int ret = stopword_set_.exist_refactored(key);
+  if (ret == OB_HASH_EXIST || ret == OB_HASH_NOT_EXIST) {
+    is_stopword = ret == OB_HASH_EXIST;
+    ret = OB_SUCCESS;
+  } else if (ret == OB_SUCCESS) {
+    ret = OB_ERR_UNEXPECTED;
   }
   return ret;
 }

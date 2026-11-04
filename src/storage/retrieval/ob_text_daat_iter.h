@@ -47,6 +47,8 @@ struct ObTextDaaTParam
   ObBM25ParamEstCtx bm25_param_est_ctx_;
   sql::ObMatchAgainstMode mode_flag_;
   bool function_lookup_mode_;
+  // Set only for the unweighted inner-product collector.
+  int64_t minimum_should_match_ = -1;
 };
 
 class ObTextDaaTIter final : public ObSRDaaTIterImpl
@@ -63,10 +65,12 @@ public:
   virtual void reset() override;
 protected:
   virtual int pre_process() override;
+  virtual int do_one_merge_round(int64_t &count) override;
 protected:
   ObBM25ParamEstimator bm25_param_estimator_;
   sql::ObMatchAgainstMode mode_flag_;
   bool function_lookup_mode_;
+  int64_t membership_min_matches_ = -1;
 private:
   DISALLOW_COPY_AND_ASSIGN(ObTextDaaTIter);
 };

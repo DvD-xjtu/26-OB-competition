@@ -35,6 +35,7 @@ int ObTextDaaTIter::init(const ObTextDaaTParam &param)
   } else {
     mode_flag_ = param.mode_flag_;
     function_lookup_mode_ = param.function_lookup_mode_;
+    membership_min_matches_ = param.minimum_should_match_;
   }
   return ret;
 }
@@ -73,6 +74,61 @@ int ObTextDaaTIter::pre_process()
     ret = OB_ITER_END;
   } else if (iter_param_->relevance_expr_ != nullptr) {
     if (OB_FAIL(bm25_param_estimator_.do_estimation(*iter_param_->eval_ctx_))) {
+    }
+  }
+  return ret;
+}
+
+int ObTextDaaTIter::do_one_merge_round(int64_t &count)
+{
+  // A small unweighted union needs just one head per sorted posting list.
+  // The inner product of unit scores is exactly the number of equal heads.
+  const int64_t streams = dim_iters_->count();
+  if (membership_min_matches_ < 0 || streams > 4 || function_lookup_mode_
+      || mode_flag_ != sql::ObMatchAgainstMode::NATURAL_LANGUAGE_MODE
+      || iter_param_->relevance_expr_ != nullptr || iter_param_->dim_weights_ != nullptr) {
+    return ObSRDaaTIterImpl::do_one_merge_round(count);
+  }
+
+  int ret = OB_SUCCESS;
+  for (int64_t i = 0; OB_SUCC(ret) && i < next_round_cnt_; ++i) {
+    const int64_t idx = next_round_iter_idxes_[i];
+    auto *stream = static_cast<ObTextRetrievalDaaTTokenIter *>(dim_iters_->at(idx));
+    if (OB_FAIL(stream->get_next_row())) {
+      if (ret == OB_ITER_END) {
+        iter_domain_ids_[idx] = nullptr;
+        ret = OB_SUCCESS;
+      }
+    } else if (OB_FAIL(stream->get_curr_id(iter_domain_ids_[idx]))) {
+    }
+  }
+  next_round_cnt_ = 0;
+  ObSRMergeItem winner;
+  for (int64_t idx = 0; OB_SUCC(ret) && idx < streams; ++idx) {
+    if (iter_domain_ids_[idx] != nullptr) {
+      ObSRMergeItem head;
+      head.iter_idx_ = idx;
+      int64_t order = -1;
+      if (winner.iter_idx_ >= 0 && OB_FAIL(merge_cmp_.cmp(head, winner, order))) {
+      } else if (order <= 0) {
+        if (order < 0) {
+          winner = head;
+          next_round_cnt_ = 0;
+        }
+        next_round_iter_idxes_[next_round_cnt_++] = idx;
+      }
+    }
+  }
+  if (OB_SUCC(ret)) {
+    if (winner.iter_idx_ < 0) {
+      ret = OB_ITER_END;
+    } else if (next_round_cnt_ >= membership_min_matches_) {
+      const double score = static_cast<double>(next_round_cnt_);
+      bool project = true;
+      if (iter_param_->need_filter() && OB_FAIL(filter_on_demand(count, score, project))) {
+      } else if (project) {
+        ret = cache_result(count, *iter_domain_ids_[winner.iter_idx_], score);
+      }
     }
   }
   return ret;
