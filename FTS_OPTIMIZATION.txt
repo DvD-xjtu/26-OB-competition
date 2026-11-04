@@ -117,3 +117,30 @@ Public implementation references
   https://github.com/oceanbase/seekdb/pull/2147
 - The dictionary-derived prefix filter was motivated by the stopword profile at
   https://github.com/beifeng-h/nailong-seekdb/commit/507b4f57e9abf7d59966bbd0d86bdd2a107fb68c
+
+
+Follow-up with platform feedback on November 4
+The platform returned 30.595/50 for 9b4508dc4 and 34.387/50 for 32f56b9f0.
+The latter removes the redundant direct MATCH filter after the existing
+score-use proof. Its platform CN/BENG/mixed/LIMIT query times were
+0.7009/1.1459/0.8396/0.1115 ms, with 8001/11000/7332/20 hits.
+
+The next engine candidate da411e1f6 retains execution-time validation and
+dictionary loading. It shares the execution scratch arena, passes a resolved
+parser object to the helper and can borrow validated unchanged UTF-8 token
+spans only from explicitly stable SQL/DDL input. Posting merges retain their
+heads between input refills and use typed comparisons for fixed binary or
+unsigned keys. COUNT(*) uses the existing skip bitmap to count active rows.
+
+A same-host full Windows benchmark of 32f56b9f0 versus da411e1f6 gave
+CN 2.0105/1.7269 ms, BENG 2.6716/2.2955 ms and mixed 2.2235/1.9280 ms.
+LIMIT was 1.1232/1.1942 ms, IK TOKENIZE 0.3715/0.3560 ms and BENG TOKENIZE
+0.2458/0.2459 ms. The build triples were 8.623/6.822/3.582 and
+8.610/6.728/3.797 seconds. Hardware noise and regressions are retained here.
+The official workload, timer, generator and scorer files are identical.
+
+Candidate runtime validation passed the 36 initial DDL checks, 34 plan cases,
+4,844 batch/heap checks, 208 collation/layout checks, 80 regular tokenizer
+cases, 934 IK boundary cases and 11,102 byte-preserving stopword cases.
+Two-session MATCH COUNT tests passed 34 cases. Generic COUNT/NULL/DISTINCT/
+GROUP BY/HAVING tests passed 165 independent expected-result cases.
