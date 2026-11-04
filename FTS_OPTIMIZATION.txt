@@ -1,42 +1,37 @@
-FTS optimization: first measured iteration
+FTS optimization, 2026-11-04
 
-Changes
-- IK processors receive the already decoded character and category directly.
-- Sorted non-overlapping IK chains use an inline array instead of a new hash table per segment.
-- Already-lowercase ASCII tokens avoid the English normalizer's case-fold allocation.
-- Natural-language scalar aggregates with a direct boolean MATCH predicate can use membership-only retrieval when all expression uses are boolean. Ranked/limited queries, numeric score uses, numeric thresholds, OR-only/NOT filters, boolean search, ES search and boosted search retain scoring.
-- Membership-only DaaT initializes only required state, allocates its skip vector, avoids BM25 statistics, and emits a positive membership value. No persisted search result cache or benchmark-specific constants are used.
+Reference: 9f45ebb09662f5a9e315dcb78af354fbdbc25909 (same source tree as local 4c6831ec2).
+The official benchmark, corpus, SQL, timing code and scoring baseline are unchanged.
 
-Evidence and correctness
-EXPLAIN before showed calc_relevance=true even for COUNT(*) with only boolean MATCH. After shows false for eligible aggregates; ranked queries retain true.
-216 IK smart/max_word document cases match the original binary, including token frequencies and long segmented inputs. Extended corpus: 324 IK/BENG cases passed. Official tokenize_function mysqltest passed unchanged. 234 aggregate/score/ranking/threshold/update/delete/transaction queries matched the scoring reference. Regression scripts are in unittest/storage/fts and use separate local test databases.
+Changes and rationale
+- IK validates/decodes each UTF-8 character once on supported collations, retaining the original fallback for invalid input and other collations.
+- Immutable dictionary ranges use binary search only after their ordering and non-overlap are verified; otherwise first-match linear lookup is retained.
+- Per-call and per-scanner word maps do not require locks. Their ownership stays private; shared dictionaries retain their synchronization.
+- TOKENIZE without explicit options initializes the existing built-in defaults directly, avoiding a JSON formatting/parsing round trip. Explicit options retain validation.
+- Bulk index scans retain bounded word-map storage and stream one reusable output row instead of allocating a large row object for every token. Token bytes and copied document IDs live until the next document. The ordinary DML path remains unchanged.
+- Natural-language membership-only retrieval avoids evaluating a direct BOOL expression once per matching document.
+- A limited derived table whose sole observer is a root COUNT(*) can omit implicit relevance sorting/scoring and unused projected columns. The latter prevents unnecessary base-table lookups. Explicit order, value aggregates, outer filters, numeric score consumers, grouping/distinct/window/side effects, ties/percent limits and other modes remain excluded.
 
-Local measurements (same WSL instance, release build, 4 GB server memory)
-Unmodified tools/benchmark/fts_large_bench.sh; ROWS=20000 BATCH=500 ROUNDS=3000 QUERY_ROUNDS=200 SAMPLES=3 WARMUP=30 SKIP_LOAD=0.
-Metric                         Before      After
-build_ik_all_sec                9.412       9.302
-build_ik_content_sec            7.265       7.263
-build_beng_en_sec               3.951       3.951
-tokenize_ik_avg_ms              0.3365      0.3362
-tokenize_beng_avg_ms            0.2698      0.2690
-query_cn_avg_ms                 2.4079      2.1242
-query_beng_avg_ms               3.3890      3.0437
-query_mixed_avg_ms              2.6184      2.3300
-query_limit_avg_ms              3.0710      3.3553
-select1_avg_ms                  0.2362      0.2339
+Correctness
+Release build succeeded. 636 tokenizer reference cases, 177 defaults/options/collation/error cases, 234 aggregate/score/ranking/DML/transaction reference cases and 372 limited-count/control cases passed. Plan assertions confirm no relevance calculation or index-back for the eligible count-only shape, while value/filter controls retain relevance.
+60 ordinary and 42 long-document/LOB/string-key/rebuild construction cases passed, plus 12 complete physical posting comparisons across bulk and incremental construction. These compare real primary key, token, frequency and document length in both inverted and forward indexes. The unmodified official tokenize_function mysqltest passed.
+Bulk and newly inserted indexes can have different BM25 scores before compaction: the existing average-length estimator scans major SSTables only and otherwise uses its default of 10. Cross-layout tests therefore assert complete posting and hit equality, and separately report score differences. Numerical score regressions are covered by the 234 same-layout reference cases.
+
+Local full benchmark, same WSL release configuration and 4 GB server memory
+ROWS=20000 BATCH=500 ROUNDS=3000 QUERY_ROUNDS=200 SAMPLES=3 WARMUP=30 SKIP_LOAD=0.
+Metric                         Reference    Candidate
+build_ik_all_sec                9.123        7.968
+build_ik_content_sec            7.068        6.358
+build_beng_en_sec               3.751        3.547
+tokenize_ik_avg_ms              0.3386       0.3082
+tokenize_beng_avg_ms            0.2663       0.2540
+query_cn_avg_ms                 2.0510       1.9381
+query_beng_avg_ms               3.0326       2.9678
+query_mixed_avg_ms              2.2763       2.0728
+query_limit_avg_ms              3.3381       0.4282
+select1_avg_ms                  0.2275       0.2258
 All hit counts unchanged: 8001, 11000, 7332, 20.
 
-The three membership queries improved about 10-12%. Build/tokenization changes are within noise locally. LIMIT is not optimized and its measured time regressed 9.3% (after-run stdev 0.1831 ms versus 0.0055 ms before); this remains a limitation. Local timings are not official competition scores. CI results, not the much slower local SQL-loop baseline, determine the final score.
-
-Second iteration
-- Share immutable built-in IK dictionary wrappers and pinned cache handles across parser instances; publish only after all three dictionaries initialize successfully.
-- Classify each IK character after one Unicode decode.
-- Use a contiguous lowercase buffer and alphanumeric scan for ASCII BEng documents under supported UTF-8 collations; retain the existing pipeline otherwise.
-- 636 tokenizer cases match the pre-change reference, including four concurrent clients immediately after server restart. Official tokenize_function mysqltest passed unchanged.
-
-Same full benchmark after second iteration:
-build_ik_all_sec 9.106; build_ik_content_sec 7.264; build_beng_en_sec 3.848
-tokenize_ik_avg_ms 0.3265; tokenize_beng_avg_ms 0.2736
-query_cn_avg_ms 2.4237; query_beng_avg_ms 3.5107; query_mixed_avg_ms 2.3670; query_limit_avg_ms 3.1481
-select1_avg_ms 0.2339; all hit counts unchanged.
-These measurements are noisy (CN stdev 0.1403 ms, BEng 0.2670 ms); they do not establish a consistent query improvement over iteration one. Official iteration-one score was 11.607/50, up from 0.428/50. Second-iteration official result is pending.
+Raw reports: unittest/storage/fts/validation/20261104-x86/{before,after}.txt.
+Their git_head is unknown because the native build directory is a source mirror; working source hashes were verified against that mirror after validation.
+The LIMIT improvement is approximately 87%. Small gains are subject to timing variation (candidate BEng query stdev 0.1409 ms). These are local measurements, not an official score or a guarantee of full marks. The candidate still requires platform evaluation.

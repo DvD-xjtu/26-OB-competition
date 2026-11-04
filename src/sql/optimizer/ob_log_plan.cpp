@@ -17,6 +17,7 @@
 #define USING_LOG_PREFIX SQL_OPT
 #include "config_bridge.h"
 #include "ob_log_plan.h"
+#include "sql/rewrite/ob_fts_count_util.h"
 #include "sql/optimizer/ob_pwj_comparer.h"
 #include "sql/optimizer/stat/ob_opt_stat_manager.h"
 #include "sql/optimizer/ob_log_table_scan.h"
@@ -12280,12 +12281,13 @@ int ObLogPlan::prepare_text_retrieval_info(const uint64_t ref_table_id,
         has_direct_match_filter = true;
       }
     }
-    // Scalar aggregates do not observe the implicit relevance ordering. Keep
-    // scoring for ranked queries, boolean/boosted search, and any expression
-    // that reads the numeric score (including parameterized comparisons).
-    if (has_direct_match_filter && get_stmt()->is_select_stmt()
-        && static_cast<const ObSelectStmt *>(get_stmt())->is_scala_group_by()
-        && !get_stmt()->has_limit() && !get_stmt()->has_order_by()
+    // Scalar aggregates and cardinality-only consumers do not observe the
+    // implicit relevance ordering. Any numeric MATCH use still retains scoring.
+    const bool order_unobserved = get_stmt()->is_select_stmt()
+        && ((static_cast<const ObSelectStmt *>(get_stmt())->is_scala_group_by()
+             && !get_stmt()->has_limit())
+            || limited_match_is_counted_only(get_stmt(), get_optimizer_context().get_root_stmt()));
+    if (has_direct_match_filter && order_unobserved && !get_stmt()->has_order_by()
         && match_against->get_mode_flag() == NATURAL_LANGUAGE_MODE
         && !match_against->is_es_match()
         && match_against->get_columns_boosts().empty()

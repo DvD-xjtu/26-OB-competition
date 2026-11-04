@@ -35,6 +35,11 @@ int ObTextDaaTIter::init(const ObTextDaaTParam &param)
   } else {
     mode_flag_ = param.mode_flag_;
     function_lookup_mode_ = param.function_lookup_mode_;
+    const sql::ObExpr *filter = iter_param_->filter_expr_;
+    membership_filter_ = mode_flag_ == sql::ObMatchAgainstMode::NATURAL_LANGUAGE_MODE
+        && iter_param_->relevance_expr_ == nullptr && filter != nullptr
+        && filter->type_ == T_OP_BOOL && filter->arg_cnt_ == 1
+        && filter->args_[0] == iter_param_->relevance_proj_expr_;
   }
   return ret;
 }
@@ -42,6 +47,7 @@ int ObTextDaaTIter::init(const ObTextDaaTParam &param)
 void ObTextDaaTIter::reset()
 {
   bm25_param_estimator_.reset();
+  membership_filter_ = false;
   // this class can know the type of dim_iters_, but ObSRDaaTIterImpl maybe not
   if (OB_NOT_NULL(dim_iters_)) {
     for (int64_t i = 0; i < dim_iters_->count(); ++i) {
@@ -76,6 +82,21 @@ int ObTextDaaTIter::pre_process()
     }
   }
   return ret;
+}
+
+int ObTextDaaTIter::filter_on_demand(
+    const int64_t count, const double relevance, bool &need_project)
+{
+  // Natural-language membership retrieval contributes 1 for every matched
+  // term. A merged row has at least one contributing term, so its direct BOOL
+  // predicate is true. Keep the numeric guard to preserve fallback semantics
+  // if future collectors admit zero/negative scores. Other predicates and
+  // search modes still use the full expression evaluator.
+  if (membership_filter_ && relevance > 0.0) {
+    need_project = true;
+    return OB_SUCCESS;
+  }
+  return ObSRDaaTIterImpl::filter_on_demand(count, relevance, need_project);
 }
 
 ObTextBMWIter::ObTextBMWIter()

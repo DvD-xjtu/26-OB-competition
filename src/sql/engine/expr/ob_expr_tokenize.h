@@ -78,6 +78,7 @@ private:
       DEFAULT,
       ALL,
     } output_mode_;
+    bool use_default_properties_;
   };
 
 private:

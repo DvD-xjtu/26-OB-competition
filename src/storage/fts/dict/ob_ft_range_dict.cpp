@@ -382,7 +382,28 @@ int ObFTRangeDict::find_first_char_range(const ObString &single_word, ObIFTDict 
 {
   int ret = OB_SUCCESS;
   bool found = false;
-  for (int i = 0; OB_SUCC(ret) && !found && i < range_dicts_.size(); ++i) {
+  if (ranges_ordered_) {
+    // Find the last range starting at or before this character. The ordering
+    // invariant is checked once when constructing the immutable dictionary.
+    int64_t first = 0;
+    int64_t last = range_dicts_.size();
+    while (first < last) {
+      const int64_t middle = first + (last - first) / 2;
+      if (ObCharset::strcmp(ObCollationType::CS_TYPE_UTF8MB4_BIN,
+                             range_dicts_[middle].start_.get_word(), single_word) <= 0) {
+        first = middle + 1;
+      } else {
+        last = middle;
+      }
+    }
+    if (first > 0 && ObCharset::strcmp(ObCollationType::CS_TYPE_UTF8MB4_BIN,
+                                        range_dicts_[first - 1].end_.get_word(), single_word) >= 0) {
+      dict = range_dicts_[first - 1].dict_;
+      found = true;
+    }
+  }
+  // Keep first-match behavior for legacy or malformed overlapping ranges.
+  for (int64_t i = 0; !ranges_ordered_ && !found && i < range_dicts_.size(); ++i) {
     if (ObCharset::strcmp(ObCollationType::CS_TYPE_UTF8MB4_BIN,
                           range_dicts_[i].start_.get_word(),
                           single_word)
@@ -420,6 +441,16 @@ int ObFTRangeDict::build_dict_from_cache(const ObFTCacheRangeContainer &range_co
       range.dict_ = dict;
       if (OB_FAIL(range_dicts_.push_back(range))) {
       }
+    }
+  }
+  ranges_ordered_ = OB_SUCC(ret);
+  for (int64_t i = 0; ranges_ordered_ && i < range_dicts_.size(); ++i) {
+    const ObFTRange &range = range_dicts_[i];
+    ranges_ordered_ = ObCharset::strcmp(ObCollationType::CS_TYPE_UTF8MB4_BIN,
+                                        range.start_.get_word(), range.end_.get_word()) <= 0;
+    if (ranges_ordered_ && i > 0) {
+      ranges_ordered_ = ObCharset::strcmp(ObCollationType::CS_TYPE_UTF8MB4_BIN,
+                                          range_dicts_[i - 1].end_.get_word(), range.start_.get_word()) < 0;
     }
   }
   return ret;

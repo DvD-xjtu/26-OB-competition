@@ -16,6 +16,7 @@
 
 #define USING_LOG_PREFIX SQL_REWRITE
 #include "sql/rewrite/ob_transform_pre_process.h"
+#include "sql/rewrite/ob_fts_count_util.h"
 #include "sql/optimizer/ob_optimizer_util.h"
 #include "sql/engine/expr/ob_expr_arg_case.h"
 #include "sql/resolver/dml/ob_select_resolver.h"
@@ -178,11 +179,51 @@ int ObTransformPreProcess::transform_one_stmt(common::ObIArray<ObParentDMLStmt> 
       }
     }
     if (OB_SUCC(ret)) {
-      if (stmt->get_match_exprs().count() > 0 &&
-          OB_FAIL(preserve_order_for_fulltext_search(stmt, is_happened))) {
-      } else {
-        trans_happened |= is_happened;
+      // A root COUNT(*) cannot observe the ordering of its sole limited input.
+      // Recognize this before implicit MATCH DESC is added; explicit ORDER BY
+      // and all consumers of row values keep their original ordering.
+      const ObDMLStmt *root = parent_stmts.empty() ? nullptr : parent_stmts.at(0).stmt_;
+      is_happened = false;
+      if (limited_match_is_counted_only(stmt, root)) {
+        // No output value is observed by COUNT(*). Avoid a base-table lookup
+        // merely to project those unused values before LIMIT is applied.
+        ObSelectStmt *input = static_cast<ObSelectStmt *>(stmt);
+        ObConstRawExpr *one = nullptr;
+        ObSEArray<ObRawExpr *, 8> old_projections;
+        ObSEArray<ObRawExpr *, 16> remaining_exprs;
+        ObSEArray<ObRawExpr *, 16> remaining_columns;
+        if (OB_FAIL(ObRawExprUtils::build_const_int_expr(*ctx_->expr_factory_, ObIntType, 1, one))) {
+        } else {
+          for (int64_t i = 0; OB_SUCC(ret) && i < input->get_select_items().count(); ++i) {
+            if (OB_FAIL(old_projections.push_back(input->get_select_items().at(i).expr_))) {
+            } else {
+              input->get_select_items().at(i).expr_ = one;
+            }
+          }
+        }
+        if (OB_FAIL(ret)) {
+        } else if (OB_FAIL(input->get_relation_exprs(remaining_exprs))) {
+        } else if (OB_FAIL(ObRawExprUtils::extract_column_exprs(remaining_exprs, remaining_columns))) {
+        } else {
+          for (int64_t i = input->get_column_items().count() - 1; OB_SUCC(ret) && i >= 0; --i) {
+            ObRawExpr *column = input->get_column_items().at(i).expr_;
+            bool was_projected = false;
+            bool still_used = false;
+            for (int64_t j = 0; j < old_projections.count(); ++j) {
+              was_projected |= old_projections.at(j) == column;
+            }
+            for (int64_t j = 0; j < remaining_columns.count(); ++j) {
+              still_used |= remaining_columns.at(j) == column;
+            }
+            if (was_projected && !still_used && OB_FAIL(input->remove_column_item(column))) {
+            }
+          }
+        }
+        is_happened = OB_SUCC(ret);
+      } else if (stmt->get_match_exprs().count() > 0
+                 && OB_FAIL(preserve_order_for_fulltext_search(stmt, is_happened))) {
       }
+      trans_happened |= is_happened;
     }
     if (OB_SUCC(ret) && OB_FAIL(reset_view_base(stmt))) {
     }

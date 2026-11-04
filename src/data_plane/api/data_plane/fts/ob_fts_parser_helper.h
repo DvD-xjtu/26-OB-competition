@@ -161,6 +161,8 @@ public:
       common::ObIAllocator *allocator,
       const common::ObString &parser_name,
       const common::ObString &parser_properties);
+  // Built-in parser defaults without a JSON serialization/parsing round trip.
+  int init_default(common::ObIAllocator *allocator, const common::ObString &parser_name);
   /**
    * Split document into multiple words
    *
@@ -207,6 +209,10 @@ public:
   TO_STRING_KV(KP_(allocator), K_(parser_name), KP_(parser_desc), K_(is_inited));
 
 private:
+  int init_impl(common::ObIAllocator *allocator,
+                const common::ObString &parser_name,
+                const common::ObString &parser_properties,
+                bool use_default_properties);
   static int segment(
       const ObFTParserProperty &property,
       const int64_t parser_version,
