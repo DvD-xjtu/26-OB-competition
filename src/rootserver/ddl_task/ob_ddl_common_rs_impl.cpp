@@ -307,6 +307,31 @@ int ObDDLTaskUtil::generate_order_by_str(
   return ret;
 }
 
+// An explicit ENABLE_NEWSORT hint bypasses the optimizer's type checks. Limit
+// it to the two nonpartitioned FTS layouts whose actual ORDER BY keys we know.
+static bool can_encode_fts_build_keys(const ObTableSchema &schema)
+{
+  const bool inverted = schema.is_fts_index_aux();
+  const ObRowkeyInfo &keys = schema.get_rowkey_info();
+  if ((!inverted && !schema.is_fts_doc_word_aux()) || schema.is_partitioned_table()
+      || keys.get_size() != 2) {
+    return false;
+  }
+  const ObRowkeyColumn *word_key = keys.get_column(inverted ? 0 : 1);
+  const ObRowkeyColumn *doc_key = keys.get_column(inverted ? 1 : 0);
+  if (word_key == nullptr || doc_key == nullptr || word_key->order_ != common::ASC
+      || doc_key->order_ != common::ASC) {
+    return false;
+  }
+  const ObColumnSchemaV2 *word = schema.get_column_schema(word_key->column_id_);
+  const ObColumnSchemaV2 *doc = schema.get_column_schema(doc_key->column_id_);
+  return word != nullptr && word->is_word_segment_column() && word->get_data_type() == ObVarcharType
+      && (word->get_collation_type() == CS_TYPE_UTF8MB4_GENERAL_CI
+          || word->get_collation_type() == CS_TYPE_UTF8MB4_BIN)
+      && doc != nullptr && doc->is_doc_id_column() && doc->get_data_type() == ObVarcharType
+      && doc->get_collation_type() == CS_TYPE_BINARY && doc->get_data_length() == OB_DOC_ID_COLUMN_BYTE_LENGTH;
+}
+
 int ObDDLTaskUtil::generate_build_replica_sql(const int64_t data_table_id,
     const int64_t dest_table_id,
     const int64_t schema_version,
@@ -534,8 +559,9 @@ int ObDDLTaskUtil::generate_build_replica_sql(const int64_t data_table_id,
         }
         if (OB_FAIL(ret)) {
         } else {
-          if (OB_FAIL(sql_string.assign_fmt("INSERT /*+ enable_parallel_dml parallel(%ld) opt_param('ddl_execution_id', %ld) opt_param('ddl_task_id', %ld) opt_param('enable_newsort', 'false') %.*s use_px */INTO `%.*s`.`%.*s` %.*s(%.*s) SELECT /*+ index(`%.*s` primary) %.*s */ %.*s from `%.*s`.`%.*s` %.*s as of snapshot %ld %.*s",
+          if (OB_FAIL(sql_string.assign_fmt("INSERT /*+ enable_parallel_dml parallel(%ld) opt_param('ddl_execution_id', %ld) opt_param('ddl_task_id', %ld) opt_param('enable_newsort', '%s') %.*s use_px */INTO `%.*s`.`%.*s` %.*s(%.*s) SELECT /*+ index(`%.*s` primary) %.*s */ %.*s from `%.*s`.`%.*s` %.*s as of snapshot %ld %.*s",
               real_parallelism, execution_id, task_id,
+              can_encode_fts_build_keys(*dest_table_schema) ? "true" : "false",
               static_cast<int>(strlen(io_read_hint)), io_read_hint,
               static_cast<int>(new_dest_database_name.length()), new_dest_database_name.ptr(), static_cast<int>(new_dest_table_name.length()), new_dest_table_name.ptr(),
               static_cast<int>(partition_names.length()), partition_names.ptr(),
