@@ -85,9 +85,7 @@ private:
   int init_writer_reader();
   int init_batch_ctx(const int64_t col_cnt, const int64_t max_batch_size);
 
-  int inner_add_batch(const common::ObDatum **datums, const common::ObIArray<ObExpr *> &exprs,
-                      const uint16_t selector[], const int64_t size,
-                      ObChunkDatumStore::StoredRow **stored_rows);
+  int add_evaluated_batch(const uint16_t selector[], const int64_t size);
   
   int add_batch_fallback(const common::ObIArray<ObExpr *> &exprs, ObEvalCtx &ctx,
                          const ObBitVector &skip, const int64_t batch_size,

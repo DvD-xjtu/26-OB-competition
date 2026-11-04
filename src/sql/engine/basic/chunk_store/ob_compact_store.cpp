@@ -105,20 +105,17 @@ int ObCompactStore::inner_get_next_row(const ObChunkDatumStore::StoredRow *&sr)
   return ret;
 }
 
-int ObCompactStore::inner_add_batch(const common::ObDatum **datums, const common::ObIArray<ObExpr *> &exprs,
-                                    const uint16_t selector[], const int64_t size,
-                                    ObChunkDatumStore::StoredRow **stored_rows)
+int ObCompactStore::add_evaluated_batch(const uint16_t selector[], const int64_t size)
 {
   int ret = OB_SUCCESS;
-  if (inited_) {
-    if (OB_FAIL(writer_->add_batch(datums, exprs, selector, size, stored_rows, batch_ctx_))) {
+  // init_writer_reader constructs a compact writer for this store.
+  ObCompactBlockWriter *writer = static_cast<ObCompactBlockWriter *>(writer_);
+  for (int64_t i = 0; OB_SUCC(ret) && i < size; ++i) {
+    if (OB_FAIL(writer->add_evaluated_row(batch_ctx_->datums_, selector[i]))) {
     } else {
-      row_cnt_ += size;
+      ++row_cnt_;
     }
-  } else {
-    ret = OB_ERR_UNEXPECTED;
   }
-
   return ret;
 }
 
@@ -180,11 +177,12 @@ int ObCompactStore::add_batch(const common::ObIArray<ObExpr *> &exprs, ObEvalCtx
   int ret = OB_SUCCESS;
   CK(is_inited());
   OZ(init_batch_ctx(exprs.count(), ctx.max_batch_size_));
-  bool all_batch_res = false;
+  bool all_batch_res = stored_rows == nullptr && exprs.count() > 0 && exprs.count() == row_meta_.col_cnt_;
   for (int64_t i = 0; i < exprs.count() && OB_SUCC(ret); i++) {
     ObExpr *e = exprs.at(i);
     if (OB_ISNULL(e)) {
       batch_ctx_->datums_[i] = nullptr;
+      all_batch_res = false;
     } else if (OB_FAIL(e->eval_batch(ctx, skip, batch_size))) {
     } else {
       if (!e->is_batch_result()) {
@@ -201,8 +199,7 @@ int ObCompactStore::add_batch(const common::ObIArray<ObExpr *> &exprs, ObEvalCtx
   }
 
   if (OB_SUCC(ret) && all_batch_res) {
-    if (OB_FAIL(inner_add_batch(batch_ctx_->datums_, exprs, selector, size,
-                                NULL == stored_rows ? batch_ctx_->stored_rows_ : stored_rows))) {
+    if (OB_FAIL(add_evaluated_batch(selector, size))) {
     }
   }
 

@@ -91,6 +91,22 @@ int ObCompactBlockWriter::add_row(const ObChunkDatumStore::StoredRow &src_sr, Ob
 }
 
 
+int ObCompactBlockWriter::add_evaluated_row(const ObDatum *const *columns, const uint16_t row)
+{
+  int ret = OB_SUCCESS;
+  uint64_t bytes = 0;
+  const auto cell = [columns, row](int64_t col) -> const ObDatum & { return columns[col][row]; };
+  if (OB_FAIL(ensure_init())) {
+  } else if (OB_FAIL(measure_datums(row_meta_->col_cnt_, cell, bytes))) {
+  } else if (OB_FAIL(ensure_write(bytes))) {
+  } else if (cur_row_offset_width_ == BASE_OFFSET_SIZE) {
+    ret = build_from_datums<uint16_t>(row_meta_->col_cnt_, cell);
+  } else {
+    ret = build_from_datums<uint32_t>(row_meta_->col_cnt_, cell);
+  }
+  return ret;
+}
+
 int ObCompactBlockWriter::add_row(const blocksstable::ObStorageDatum *storage_datums,
                                   const int64_t column_count,
                                   const int64_t extra_size, ObChunkDatumStore::StoredRow **stored_row)
@@ -145,6 +161,12 @@ int ObCompactBlockWriter::inner_add_row(const blocksstable::ObStorageDatum *stor
 template <typename T>
 int ObCompactBlockWriter::inner_build_from_stored_row(const ObChunkDatumStore::StoredRow &sr)
 {
+  return build_from_datums<T>(sr.cnt_, [&sr](int64_t i) -> const ObDatum & { return sr.cells()[i]; });
+}
+
+template <typename T, typename ReadDatum>
+int ObCompactBlockWriter::build_from_datums(const int64_t col_count, const ReadDatum &read_datum)
+{
   int ret = OB_SUCCESS;
   if (OB_ISNULL(row_meta_)) {
     ret = OB_ERR_UNEXPECTED;
@@ -153,8 +175,8 @@ int ObCompactBlockWriter::inner_build_from_stored_row(const ObChunkDatumStore::S
     ret = OB_ERR_UNEXPECTED;
   } else {
     T *var_offset_array = reinterpret_cast<T*>(row_info_.buf_ + HEAD_SIZE + row_info_.bitmap_size_);
-    for (int64_t i = 0 ; OB_SUCC(ret) && i < sr.cnt_; i++) {
-      if (OB_FAIL(inner_process_datum<T>(sr.cells()[i], i, *row_meta_, row_info_))) {
+    for (int64_t i = 0 ; OB_SUCC(ret) && i < col_count; i++) {
+      if (OB_FAIL(inner_process_datum<T>(read_datum(i), i, *row_meta_, row_info_))) {
       }
     }
 
@@ -305,6 +327,12 @@ int ObCompactBlockWriter::get_row_stored_size(const common::ObIArray<ObExpr*> &e
 
 int ObCompactBlockWriter::get_row_stored_size(const ObChunkDatumStore::StoredRow &sr, uint64_t &size)
 {
+  return measure_datums(sr.cnt_, [&sr](int64_t i) -> const ObDatum & { return sr.cells()[i]; }, size);
+}
+
+template <typename ReadDatum>
+int ObCompactBlockWriter::measure_datums(const int64_t col_count, const ReadDatum &read_datum, uint64_t &size)
+{
   int ret = OB_SUCCESS;
   const ChunkRowMeta &row_meta = *get_meta();
   int64_t bit_map_size = sql::ObBitVector::memory_size(row_meta.col_cnt_);
@@ -312,13 +340,11 @@ int ObCompactBlockWriter::get_row_stored_size(const ObChunkDatumStore::StoredRow
   int64_t offset_size = 0;
   size = 0;
 
-  ObExpr *expr = nullptr;
-  common::ObDatum *datum = nullptr;
-  for (int64_t i = 0; OB_SUCC(ret) && i < sr.cnt_; ++i) {
+  for (int64_t i = 0; OB_SUCC(ret) && i < col_count; ++i) {
     if (row_meta.column_length_[i] != 0) {
       data_size +=  row_meta.column_length_[i];
-    } else if (!sr.cells()[i].is_null()) {
-      data_size += sr.cells()[i].len_;
+    } else if (!read_datum(i).is_null()) {
+      data_size += read_datum(i).len_;
     }
   }
 

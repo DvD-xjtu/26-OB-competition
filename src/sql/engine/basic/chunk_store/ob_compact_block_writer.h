@@ -115,6 +115,8 @@ public:
                         const uint16_t selector[], const int64_t size,
                         ObChunkDatumStore::StoredRow **stored_rows, BatchCtx *batch_ctx) override { return OB_NOT_IMPLEMENT; }
 
+  int add_evaluated_row(const ObDatum *const *columns, const uint16_t row);
+
   void set_meta(const ChunkRowMeta *row_meta) override { row_meta_ = row_meta; };
   const ChunkRowMeta *get_meta() { return row_meta_; }
   int close() override;
@@ -147,6 +149,11 @@ private:
                           CurRowInfo &row_info);
   template <typename T>
   int inner_build_from_stored_row(const ObChunkDatumStore::StoredRow &sr);
+  template <typename T, typename ReadDatum>
+  int build_from_datums(const int64_t col_count, const ReadDatum &read_datum);
+  template <typename ReadDatum>
+  int measure_datums(const int64_t col_count, const ReadDatum &read_datum, uint64_t &size);
+
   inline uint8_t get_offset_width(const int64_t data_size) {
     return (data_size < (1 << 16)) ? BASE_OFFSET_SIZE : EXTENDED_OFFSET_SIZE;
   }
