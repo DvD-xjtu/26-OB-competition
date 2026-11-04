@@ -3269,6 +3269,21 @@ int ObAggregateProcessor::prepare_aggr_result(const ObChunkDatumStore::StoredRow
   return ret;
 }
 
+// COUNT(*) consumes only the number of active rows. An explicit selector is
+// already compact, while a slice may contain skipped bits at either boundary.
+static int64_t active_aggregate_rows(const ObAggregateProcessor::ObSelector &selector)
+{
+  return selector.count_;
+}
+
+static int64_t active_aggregate_rows(const ObAggregateProcessor::ObBatchRowsSlice &slice)
+{
+  if (slice.begin_pos_ >= slice.end_pos_) {
+    return 0;
+  }
+  return slice.end_pos_ - slice.begin_pos_ - slice.brs_->skip_->accumulate_bit_cnt(slice.begin_pos_, slice.end_pos_);
+}
+
 template <typename T>
 int ObAggregateProcessor::process_aggr_batch_result(
     const ObIArray<ObExpr *> *param_exprs,
@@ -3280,12 +3295,7 @@ int ObAggregateProcessor::process_aggr_batch_result(
   const ObItemType aggr_fun = aggr_info.get_expr_type();
   if (NULL != param_exprs && param_exprs->empty()) {
     if (T_FUN_COUNT == aggr_fun) {
-      //count asterisk(*) case: null is counted
-      uint16_t row_count = 0;
-      for (auto it = selector.begin(); it < selector.end(); selector.next(it)) {
-        ++row_count;
-      }
-      aggr_cell.add_row_count(row_count);
+      aggr_cell.add_row_count(active_aggregate_rows(selector));
     } else if (T_FUN_GROUP_ID == aggr_fun) {
       // do nothing
     } else {

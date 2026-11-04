@@ -91,11 +91,34 @@ int ObTextDaaTIter::merge_rows(const int64_t capacity, int64_t &count)
       || iter_param_->need_project_relevance() || iter_param_->need_pushdown_topk()) {
     return ObSRDaaTIterImpl::merge_rows(capacity, count);
   }
+  const sql::ObDatumMeta &meta = iter_param_->id_proj_expr_->datum_meta_;
+  auto compare = [&](const int64_t left, const int64_t right, int64_t &order) {
+    const ObDatum &l = *iter_domain_ids_[left];
+    const ObDatum &r = *iter_domain_ids_[right];
+    if (!l.is_null() && !r.is_null()) {
+      if (meta.type_ == common::ObUInt64Type && l.len_ == sizeof(uint64_t) && r.len_ == sizeof(uint64_t)) {
+        const uint64_t lv = l.get_uint64();
+        const uint64_t rv = r.get_uint64();
+        order = lv < rv ? -1 : lv > rv;
+        return OB_SUCCESS;
+      }
+      if (meta.type_ == common::ObVarcharType && meta.cs_type_ == common::CS_TYPE_BINARY
+          && l.len_ == common::OB_DOC_ID_COLUMN_BYTE_LENGTH && r.len_ == common::OB_DOC_ID_COLUMN_BYTE_LENGTH) {
+        order = MEMCMP(l.ptr_, r.ptr_, common::OB_DOC_ID_COLUMN_BYTE_LENGTH);
+        return OB_SUCCESS;
+      }
+    }
+    // Nulls, variable-length strings and other collations retain their SQL comparator.
+    ObSRMergeItem a, b;
+    a.iter_idx_ = left;
+    b.iter_idx_ = right;
+    return merge_cmp_.cmp(a, b, order);
+  };
+
   int ret = OB_SUCCESS;
   while (OB_SUCC(ret) && count < capacity) {
-    ObSRMergeItem winner;
-    int64_t matching = 0;
-    int64_t active = 0;
+    int64_t active[MAX_SHORT_STREAMS];
+    int64_t nactive = 0;
     for (int64_t i = 0; OB_SUCC(ret) && i < streams; ++i) {
       PostingBatch &batch = postings_[i];
       if (!batch.end_ && batch.pos_ == batch.size_) {
@@ -107,39 +130,54 @@ int ObTextDaaTIter::merge_rows(const int64_t capacity, int64_t &count)
         }
       }
       if (OB_SUCC(ret) && !batch.end_) {
-        ++active;
-        ObSRMergeItem head;
-        head.iter_idx_ = i;
+        active[nactive++] = i;
         iter_domain_ids_[i] = &batch.ids_[batch.pos_].get_datum();
-        int64_t order = -1;
-        if (winner.iter_idx_ >= 0 && OB_FAIL(merge_cmp_.cmp(head, winner, order))) {
-        } else if (order <= 0) {
-          if (order < 0) {
-            winner = head;
-            matching = 0;
-          }
-          next_round_iter_idxes_[matching++] = i;
-        }
       }
     }
-    if (OB_SUCC(ret)) {
-      if (winner.iter_idx_ < 0) {
-        ret = OB_ITER_END;
-      } else if (active == 1) {
-        PostingBatch &batch = postings_[winner.iter_idx_];
-        if (membership_min_matches_ > 1) {
-          batch.pos_ = batch.size_;
-        } else {
-          while (OB_SUCC(ret) && count < capacity && batch.pos_ < batch.size_) {
-            ret = cache_result(count, batch.ids_[batch.pos_++].get_datum(), 1.0);
+    if (OB_FAIL(ret)) {
+    } else if (nactive == 0) {
+      ret = OB_ITER_END;
+    } else if (nactive == 1) {
+      PostingBatch &batch = postings_[active[0]];
+      if (membership_min_matches_ > 1) {
+        batch.pos_ = batch.size_;
+      } else {
+        while (OB_SUCC(ret) && count < capacity && batch.pos_ < batch.size_) {
+          ret = cache_result(count, batch.ids_[batch.pos_++].get_datum(), 1.0);
+        }
+      }
+    } else {
+      // Heads from other streams remain valid until one batch needs a refill.
+      bool refill = false;
+      while (OB_SUCC(ret) && count < capacity && !refill) {
+        int64_t winner = active[0];
+        int64_t matching = 1;
+        next_round_iter_idxes_[0] = winner;
+        for (int64_t j = 1; OB_SUCC(ret) && j < nactive; ++j) {
+          const int64_t i = active[j];
+          int64_t order = 0;
+          if (OB_FAIL(compare(i, winner, order))) {
+          } else if (order <= 0) {
+            if (order < 0) {
+              winner = i;
+              matching = 0;
+            }
+            next_round_iter_idxes_[matching++] = i;
           }
         }
-      } else {
-        if (matching >= membership_min_matches_) {
-          ret = cache_result(count, *iter_domain_ids_[winner.iter_idx_], static_cast<double>(matching));
-        }
-        for (int64_t i = 0; i < matching; ++i) {
-          ++postings_[next_round_iter_idxes_[i]].pos_;
+        if (OB_SUCC(ret)) {
+          if (matching >= membership_min_matches_) {
+            ret = cache_result(count, *iter_domain_ids_[winner], static_cast<double>(matching));
+          }
+          for (int64_t j = 0; j < matching; ++j) {
+            const int64_t i = next_round_iter_idxes_[j];
+            PostingBatch &batch = postings_[i];
+            if (++batch.pos_ == batch.size_) {
+              refill = true;
+            } else {
+              iter_domain_ids_[i] = &batch.ids_[batch.pos_].get_datum();
+            }
+          }
         }
       }
     }
