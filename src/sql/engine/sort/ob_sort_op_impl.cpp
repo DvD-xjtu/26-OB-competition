@@ -239,21 +239,31 @@ void ObSortOpImpl::ObAdaptiveQS::inplace_radixsort_more_bucket(int64_t l, int64_
       return;
     }
 
-    int divide_line = l;
-    __builtin_prefetch((&sort_rows_.at(l).sub_cache_[0]));
-    for (int i = l; i < r; i++) {
-      // byte b = index_bytes[i];
-      if (i+1 < r) __builtin_prefetch((&sort_rows_.at(i+1).sub_cache_[0]));
-      if ((sort_rows_.at(i).sub_cache_[0] & masks[div_val]) == 0) {
-        swap(i, divide_line);
-        divide_line++;
+    AQSItem *items = &sort_rows_.at(0);
+    const unsigned int mask = masks[div_val];
+    unsigned int seen_ones = 0;
+    unsigned int seen_zeros = 0;
+    int64_t divide_line = l;
+    for (int64_t i = l; i < r; ++i) {
+      const unsigned int byte = items[i].sub_cache_[0];
+      seen_ones |= byte;
+      seen_zeros |= ~byte;
+      if ((byte & mask) == 0) {
+        if (i != divide_line) {
+          std::swap(items[i], items[divide_line]);
+        }
+        ++divide_line;
       }
     }
+    // A bit with the same value throughout this range leaves both buckets
+    // untouched. Go straight to the highest remaining bit that varies.
+    const unsigned int remaining = (seen_ones & seen_zeros) & (mask - 1);
+    const int64_t next_bit = remaining == 0 ? -1 : 31 - __builtin_clz(remaining);
     inplace_radixsort_more_bucket(l, divide_line,
-                                  div_val - 1, common_prefix,
+                                  next_bit, common_prefix,
                                   depth_limit, cache_offset, update);
     inplace_radixsort_more_bucket(divide_line, r,
-                                  div_val - 1, common_prefix,
+                                  next_bit, common_prefix,
                                   depth_limit, cache_offset, update);
   }
 }
