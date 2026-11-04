@@ -1,0 +1,10 @@
+{
+  "status": "SWEEP_UNAVAILABLE",
+  "reason": "The skill's required reviewer model is unavailable.",
+  "review_independence": "none",
+  "implementer_checks": [
+    "No telemetry or network upload added",
+    "CAGRA parameters and SQL results retain the V5 contract",
+    "Process and report paths bind diagnostics to the checkout under test"
+  ]
+}

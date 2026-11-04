@@ -16,13 +16,18 @@ typedef struct {
   cuvsCagraIndexParams_t ip;
   cuvsCagraIndex_t       idx;
   long n, dim;
+  int diagnostic_search_logged;
 } sk_cuvs_index;
 
 void* seekdb_cuvs_build(const float* base, long n, long dim)
 {
+  fprintf(stderr, "[AMD_DIAG] event=build_begin n=%ld dim=%ld iterations=100\n", n, dim);
+  const char* stage = "allocate_handle";
   sk_cuvs_index* h = (sk_cuvs_index*)calloc(1, sizeof(*h));
-  if (!h) return NULL;
-  if (cuvsResourcesCreate(&h->res) != CUVS_SUCCESS) { free(h); return NULL; }
+  if (!h) { fprintf(stderr, "[AMD_DIAG] event=build_failed stage=%s\n", stage); return NULL; }
+  if (cuvsResourcesCreate(&h->res) != CUVS_SUCCESS) {
+    fprintf(stderr, "[AMD_DIAG] event=build_failed stage=resources\n"); free(h); return NULL;
+  }
 
   DLManagedTensor dset; long ds[2] = {n, dim};
   dset.dl_tensor.data = (void*)base;
@@ -31,19 +36,24 @@ void* seekdb_cuvs_build(const float* base, long n, long dim)
   dset.dl_tensor.dtype.code = kDLFloat; dset.dl_tensor.dtype.bits = 32; dset.dl_tensor.dtype.lanes = 1;
   dset.dl_tensor.shape = ds; dset.dl_tensor.strides = 0; dset.dl_tensor.byte_offset = 0;
 
+  stage = "index_params";
   if (cuvsCagraIndexParamsCreate(&h->ip) != CUVS_SUCCESS) goto fail_res;
   h->ip->build_algo = NN_DESCENT;
   h->ip->graph_degree = 128;
   h->ip->intermediate_graph_degree = 256;
   h->ip->nn_descent_niter = 100;
+  stage = "index_create";
   if (cuvsCagraIndexCreate(&h->idx)      != CUVS_SUCCESS) goto fail_ip;
+  stage = "cagra_build";
   if (cuvsCagraBuild(h->res, h->ip, &dset, h->idx) != CUVS_SUCCESS) goto fail_idx;
   h->n = n; h->dim = dim;
+  fprintf(stderr, "[AMD_DIAG] event=build_ok n=%ld dim=%ld\n", n, dim);
   return h;
 
 fail_idx: cuvsCagraIndexDestroy(h->idx);
 fail_ip:  cuvsCagraIndexParamsDestroy(h->ip);
 fail_res: cuvsResourcesDestroy(h->res); free(h);
+  fprintf(stderr, "[AMD_DIAG] event=build_failed stage=%s\n", stage);
   fprintf(stderr, "[seekdb_cuvs] build failed: %s\n", cuvsGetLastErrorText());
   return NULL;
 }
@@ -52,7 +62,7 @@ int seekdb_cuvs_search(void* handle, const float* query, long nq, long topk,
                        unsigned int* out_ids, float* out_dist)
 {
   sk_cuvs_index* h = (sk_cuvs_index*)handle;
-  if (!h) return 1;
+  if (!h) { fprintf(stderr, "[AMD_DIAG] event=search_failed rc=1\n"); return 1; }
   int rc = 0;
   float* qd = 0; unsigned* nd = 0; float* dd = 0; cuvsCagraSearchParams_t sp = 0;
   if (cuvsRMMAlloc(h->res, (void**)&qd, sizeof(float)*nq*h->dim)  != CUVS_SUCCESS) { rc=10; goto done; }
@@ -84,6 +94,13 @@ done:
   if (nd) cuvsRMMFree(h->res, nd, sizeof(unsigned)*nq*topk);
   if (qd) cuvsRMMFree(h->res, qd, sizeof(float)*nq*h->dim);
   if (rc) fprintf(stderr, "[seekdb_cuvs] search rc=%d: %s\n", rc, cuvsGetLastErrorText());
+  if (rc) {
+    fprintf(stderr, "[AMD_DIAG] event=search_failed rc=%d\n", rc);
+  } else if (!__atomic_load_n(&h->diagnostic_search_logged, __ATOMIC_RELAXED) &&
+             !__atomic_exchange_n(&h->diagnostic_search_logged, 1, __ATOMIC_RELAXED)) {
+    fprintf(stderr, "[AMD_DIAG] event=search_ok n=%ld dim=%ld nq=%ld topk=%ld\n",
+            h->n, h->dim, nq, topk);
+  }
   return rc;
 }
 
@@ -100,24 +117,36 @@ void seekdb_cuvs_free(void* handle)
 int seekdb_cuvs_serialize(void* handle, const char* filename)
 {
   sk_cuvs_index* index = (sk_cuvs_index*)handle;
-  if (!index || !filename) return 1;
+  if (!index || !filename) { fprintf(stderr, "[AMD_DIAG] event=serialize_failed stage=arguments\n"); return 1; }
+  fprintf(stderr, "[AMD_DIAG] event=serialize_begin n=%ld dim=%ld\n", index->n, index->dim);
   if (cuvsCagraSerialize(index->res, filename, index->idx, true) != CUVS_SUCCESS) {
+    fprintf(stderr, "[AMD_DIAG] event=serialize_failed stage=cagra_serialize\n");
     fprintf(stderr, "[seekdb_cuvs] serialize failed: %s\n", cuvsGetLastErrorText());
     return 1;
   }
+  fprintf(stderr, "[AMD_DIAG] event=serialize_ok\n");
   return 0;
 }
 
 void* seekdb_cuvs_deserialize(const char* filename, long n, long dim)
 {
-  if (!filename || n <= 0 || dim <= 0) return NULL;
+  if (!filename || n <= 0 || dim <= 0) {
+    fprintf(stderr, "[AMD_DIAG] event=deserialize_failed stage=arguments\n"); return NULL;
+  }
+  fprintf(stderr, "[AMD_DIAG] event=deserialize_begin n=%ld dim=%ld\n", n, dim);
+  const char* stage = "allocate_handle";
   sk_cuvs_index* index = (sk_cuvs_index*)calloc(1, sizeof(*index));
-  if (!index) return NULL;
+  if (!index) { fprintf(stderr, "[AMD_DIAG] event=deserialize_failed stage=%s\n", stage); return NULL; }
+  stage = "resources";
   if (cuvsResourcesCreate(&index->res) != CUVS_SUCCESS) goto fail;
+  stage = "index_params";
   if (cuvsCagraIndexParamsCreate(&index->ip) != CUVS_SUCCESS) goto fail_res;
+  stage = "index_create";
   if (cuvsCagraIndexCreate(&index->idx) != CUVS_SUCCESS) goto fail_ip;
+  stage = "cagra_deserialize";
   if (cuvsCagraDeserialize(index->res, filename, index->idx) != CUVS_SUCCESS) goto fail_idx;
   {
+    stage = "shape_check";
     int64_t actual_n = 0;
     int64_t actual_dim = 0;
     if (cuvsCagraIndexGetSize(index->idx, &actual_n) != CUVS_SUCCESS ||
@@ -130,6 +159,7 @@ void* seekdb_cuvs_deserialize(const char* filename, long n, long dim)
   }
   index->n = n;
   index->dim = dim;
+  fprintf(stderr, "[AMD_DIAG] event=deserialize_ok n=%ld dim=%ld\n", n, dim);
   return index;
 fail_idx:
   cuvsCagraIndexDestroy(index->idx);
@@ -138,6 +168,7 @@ fail_ip:
 fail_res:
   cuvsResourcesDestroy(index->res);
 fail:
+  fprintf(stderr, "[AMD_DIAG] event=deserialize_failed stage=%s\n", stage);
   fprintf(stderr, "[seekdb_cuvs] deserialize failed: %s\n", cuvsGetLastErrorText());
   free(index);
   return NULL;

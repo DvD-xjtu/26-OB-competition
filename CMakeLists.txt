@@ -12,6 +12,10 @@ project("OceanBase"
   HOMEPAGE_URL "https://www.oceanbase.ai"
   LANGUAGES CXX C ASM)
 
+if(OB_BUILD_CUVS)
+  message(STATUS "[AMD_DIAG] event=cmake_configure bridge=${CUVS_BRIDGE_LIB} trace=${OB_BUILD_CUVS_TRACE}")
+endif()
+
 option(OB_ENABLE_STANDBY "Build physical standby support" ON)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)

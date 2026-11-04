@@ -72,6 +72,11 @@ endif()
 target_link_libraries(ob_main PUBLIC ob_base)
 
 add_executable(seekdb)
+if(OB_BUILD_CUVS)
+  add_custom_command(TARGET seekdb POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "[AMD_DIAG] event=seekdb_build_ok binary=$<TARGET_FILE:seekdb>"
+    VERBATIM)
+endif()
 if(WIN32)
   target_link_options(seekdb PRIVATE /FORCE:MULTIPLE)
   get_filename_component(CLANG_BIN_DIR ${CMAKE_CXX_COMPILER} DIRECTORY)
