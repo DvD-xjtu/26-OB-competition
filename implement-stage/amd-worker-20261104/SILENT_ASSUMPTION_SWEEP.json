@@ -1,0 +1,10 @@
+{
+  "status": "SWEEP_UNAVAILABLE",
+  "required_model": "gpt-5.6-sol",
+  "reason": "The required reviewer model is not available in the current session; no substitute reviewer was spawned.",
+  "review_independence": "not_run",
+  "acceptance_status": "unreviewed",
+  "undeclared": null,
+  "semantic_undeclared": null,
+  "deterministic_checks": "CPU callback/worker synchronization checks pass; see BUILD_NOTE.md. GPU validation remains pending."
+}

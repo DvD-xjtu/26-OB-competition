@@ -17,6 +17,7 @@
 #define USING_LOG_PREFIX LIB
 
 #include "ob_vsag_adaptor.h"
+#include "cuvs_search_worker.h"
 #include <map>
 #include <set>
 #include <mutex>
@@ -221,6 +222,13 @@ static void *ob_cuvs_job(void *arg) {
   return nullptr;
 }
 
+// Reuse one large-stack GPU search worker. The caller holds g_ob_cuvs_mu and
+// waits for completion, so index/job/query storage stays valid during dispatch.
+static bool ob_cuvs_run_search_job(ObCuvsJob *job) {
+  static CuvsSearchWorker worker(ob_cuvs_job);
+  return worker.run(job);
+}
+
 // [BATCH] Feed nq probe vectors to ONE cuVS call (nq>1). Same large-stack
 // pthread pattern as the single-query path (cuVS overflows the OB worker stack).
 struct ObCuvsBatchJob {
@@ -283,10 +291,10 @@ static bool ob_cuvs_try_search(void *key, vsag::Allocator *alloc,
   std::vector<unsigned> off(topk);
   std::vector<float> dst(topk);
   ObCuvsJob job{ent, query, topk, static_cast<int>(ent->dim_), n, need_build, &off, &dst, -1, false};
-  pthread_t tid; pthread_attr_t attr; pthread_attr_init(&attr);
-  pthread_attr_setstacksize(&attr, 32UL * 1024 * 1024);
-  if (pthread_create(&tid, &attr, ob_cuvs_job, &job) == 0) { pthread_join(tid, nullptr); }
-  pthread_attr_destroy(&attr);
+  if (!ob_cuvs_run_search_job(&job)) {
+    LOG_WARN("[OBVSAG][cuVS] failed to start GPU search worker", KP(key));
+    return false;
+  }
   if (job.built_) { ob_vsag_trace("cuvs_build", key, static_cast<long>(ent->dim_), static_cast<long>(n)); }
   if (ent->bridge_ == nullptr || job.rc_ != 0) { return false; }
   // Post-filter: cuVS returned UNFILTERED top-k. Apply the query's row filter

@@ -148,6 +148,16 @@ int main() {
     assert(worker.run(&job) && job.rc_ == 0);
   }
   { CuvsSearchWorker unused(ob_cuvs_job); }
+#ifdef INTEGRATED
+  // Compile and call the actual adaptor dispatch wrapper as well.
+  reject_create = true;
+  assert(!ob_cuvs_run_search_job(&job));
+  reject_create = false;
+  require_same_thread = false;
+  assert(ob_cuvs_run_search_job(&job) && job.rc_ == 0);
+  require_same_thread = true;
+  assert(ob_cuvs_run_search_job(&job) && job.rc_ == 0);
+#endif
 #endif
   std::cout << "PASS: callback, stack, completion, thread identity";
 #ifndef BASELINE
@@ -165,13 +175,22 @@ def main():
     args = parser.parse_args()
     source = ADAPTOR.read_text()
     callback = source[source.index("struct ObCuvsJob {"):source.index("// [BATCH] Feed")]
-    callback = callback[:callback.index("// Reuse one large-stack GPU search worker.")] if "// Reuse one large-stack GPU search worker." in callback else callback
+    integrated = "// Reuse one large-stack GPU search worker." in callback
+    if args.baseline and integrated:
+        callback = callback[:callback.index("// Reuse one large-stack GPU search worker.")]
+    if integrated:
+        search = source[source.index("static bool ob_cuvs_try_search("):source.index("static const char OB_CUVS_SNAPSHOT_MAGIC")]
+        assert "ob_cuvs_run_search_job(&job)" in search
+        assert "pthread_create" not in search
+        assert '#include "cuvs_search_worker.h"' in source
     with tempfile.TemporaryDirectory(prefix="seekdb-worker-test-") as tmp:
         cpp, binary = Path(tmp) / "test.cpp", Path(tmp) / "test"
         cpp.write_text(PREAMBLE + callback + MAIN)
         cmd = [os.environ.get("CXX", "c++"), "-std=c++17", "-pthread", "-Wall", "-Wextra", "-Werror", "-Wno-unused-function", "-I", str(HEADER.parent), str(cpp), "-o", str(binary)]
         if args.baseline:
             cmd.insert(1, "-DBASELINE")
+        elif integrated:
+            cmd.insert(1, "-DINTEGRATED")
         if args.sanitize:
             cmd[1:1] = [f"-fsanitize={args.sanitize}", "-fno-omit-frame-pointer", "-g"]
         subprocess.run(cmd, check=True, timeout=60)
