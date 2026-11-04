@@ -338,25 +338,39 @@ int ObFTParseHelper::init_from_tree(ObIAllocator *allocator, const ObString &par
   return init_impl(allocator, parser_name, ObString(), &validated_properties);
 }
 
+int ObFTParseHelper::init_from_tree(ObIAllocator *allocator, const ObFTParser &parser,
+                                    const ObFTParserJsonProps &validated_properties)
+{
+  return init_impl(allocator, ObString(), ObString(), &validated_properties, &parser);
+}
+
 int ObFTParseHelper::init_impl(ObIAllocator *allocator, const ObString &parser_name,
-                               const ObString &serialized, const ObFTParserJsonProps *validated)
+                               const ObString &serialized, const ObFTParserJsonProps *validated,
+                               const ObFTParser *resolved)
 {
   int ret = OB_SUCCESS;
   if (OB_UNLIKELY(is_inited_)) {
     ret = OB_INIT_TWICE;
-  } else if (OB_ISNULL(allocator) || OB_UNLIKELY(parser_name.empty())) {
+  } else if (OB_ISNULL(allocator) || (resolved == nullptr && parser_name.empty())) {
     ret = OB_INVALID_ARGUMENT;
-  } else if (OB_FAIL(parser_name_.parse_from_str(parser_name.ptr(), parser_name.length()))) {
-  } else if (OB_FAIL(validated == nullptr
-                         ? parser_property_.parse_for_parser_helper(parser_name_, serialized)
-                         : parser_property_.load_from_tree(parser_name_, *validated, validated->is_empty()))) {
-  } else if (OB_FAIL(parser_name_.get_desc(parser_desc_))) {
-  } else if (OB_ISNULL(parser_desc_)) {
-    ret = OB_ERR_UNEXPECTED;
-  } else if (OB_FAIL(set_add_word_flag(*parser_desc_))) {
   } else {
-    allocator_ = allocator;
-    is_inited_ = true;
+    if (resolved != nullptr) {
+      parser_name_ = *resolved;
+    } else {
+      ret = parser_name_.parse_from_str(parser_name.ptr(), parser_name.length());
+    }
+    if (OB_FAIL(ret)) {
+    } else if (OB_FAIL(validated == nullptr
+                           ? parser_property_.parse_for_parser_helper(parser_name_, serialized)
+                           : parser_property_.load_from_tree(parser_name_, *validated, validated->is_empty()))) {
+    } else if (OB_FAIL(parser_name_.get_desc(parser_desc_))) {
+    } else if (OB_ISNULL(parser_desc_)) {
+      ret = OB_ERR_UNEXPECTED;
+    } else if (OB_FAIL(set_add_word_flag(*parser_desc_))) {
+    } else {
+      allocator_ = allocator;
+      is_inited_ = true;
+    }
   }
   if (OB_FAIL(ret) && OB_UNLIKELY(!is_inited_)) {
     reset();
@@ -379,6 +393,18 @@ int ObFTParseHelper::segment(
     int64_t &doc_length,
     ObFTWordMap &words) const
 {
+  return segment_impl(meta, fulltext, fulltext_len, doc_length, words, false);
+}
+
+int ObFTParseHelper::segment_stable_input(const ObObjMeta &meta, const char *fulltext,
+                                         int64_t fulltext_len, int64_t &doc_length, ObFTWordMap &words) const
+{
+  return segment_impl(meta, fulltext, fulltext_len, doc_length, words, true);
+}
+
+int ObFTParseHelper::segment_impl(const ObObjMeta &meta, const char *fulltext, int64_t fulltext_len,
+                                 int64_t &doc_length, ObFTWordMap &words, bool stable_input) const
+{
   int ret = OB_SUCCESS;
   const ObCharsetInfo *cs = nullptr;
   ObCollationType type = meta.get_collation_type();
@@ -393,6 +419,9 @@ int ObFTParseHelper::segment(
   } else {
     words.reuse();
     ObAddWord add_word(parser_property_, meta, add_word_flag_, *allocator_, words);
+    if (stable_input && (type == CS_TYPE_UTF8MB4_GENERAL_CI || type == CS_TYPE_UTF8MB4_BIN)) {
+      add_word.set_stable_utf8_input(fulltext, fulltext_len);
+    }
     if (OB_FAIL(segment(
                     parser_property_,
                     parser_name_.get_parser_version(),

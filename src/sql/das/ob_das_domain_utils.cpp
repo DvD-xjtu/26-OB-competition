@@ -114,7 +114,7 @@ int ObFTIndexRowCache::segment(const common::ObObjMeta &ft_obj_meta,
       ret = OB_ITER_END;
     } else if (OB_FAIL(cursor_->words_.create(buckets, ObMemAttr("FTWordMap")))) {
     } else if (OB_FAIL(ob_write_string(allocator, fulltext, owned_text))) {
-    } else if (OB_FAIL(helper_.segment(ft_obj_meta, owned_text.ptr(), owned_text.length(),
+    } else if (OB_FAIL(helper_.segment_stable_input(ft_obj_meta, owned_text.ptr(), owned_text.length(),
                                        doc_length, cursor_->words_))) {
     } else if (cursor_->words_.size() == 0) {
       ret = OB_ITER_END;

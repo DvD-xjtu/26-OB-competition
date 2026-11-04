@@ -163,6 +163,8 @@ public:
       const common::ObString &parser_properties);
   int init_from_tree(common::ObIAllocator *allocator, const common::ObString &parser_name,
                      const ObFTParserJsonProps &validated_properties);
+  int init_from_tree(common::ObIAllocator *allocator, const ObFTParser &parser,
+                     const ObFTParserJsonProps &validated_properties);
   /**
    * Split document into multiple words
    *
@@ -178,6 +180,9 @@ public:
       const int64_t fulltext_len,
       int64_t &doc_length,
       ObFTWordMap &words) const;
+  // The caller keeps the input bytes immutable until all token views are consumed.
+  int segment_stable_input(const common::ObObjMeta &meta, const char *fulltext, int64_t fulltext_len,
+                           int64_t &doc_length, ObFTWordMap &words) const;
   int check_is_the_same(
       const common::ObString &parser_name,
       const common::ObString &parser_properties,
@@ -209,8 +214,11 @@ public:
   TO_STRING_KV(KP_(allocator), K_(parser_name), KP_(parser_desc), K_(is_inited));
 
 private:
+  int segment_impl(const common::ObObjMeta &meta, const char *fulltext, int64_t fulltext_len,
+                   int64_t &doc_length, ObFTWordMap &words, bool stable_input) const;
   int init_impl(common::ObIAllocator *allocator, const common::ObString &parser_name,
-                const common::ObString &serialized, const ObFTParserJsonProps *validated);
+                const common::ObString &serialized, const ObFTParserJsonProps *validated,
+                const ObFTParser *resolved = nullptr);
   static int segment(
       const ObFTParserProperty &property,
       const int64_t parser_version,

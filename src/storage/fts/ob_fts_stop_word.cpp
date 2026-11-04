@@ -186,12 +186,44 @@ bool ObAddWord::is_min_max_word(const int64_t c_len) const
   return flag_.min_max_word() && (c_len < min_token_size_ || c_len > max_token_size_);
 }
 
+// These two UTF-8 collations use ob_unicase_default. ASCII other than A-Z
+// and U+4E00..U+9FFF are unchanged by their case converter. Validate the
+// entire token; malformed or mixed Unicode must use the charset handler.
+static bool is_unchanged_input_token(const ObString &token, const char *text, int64_t length)
+{
+  if (text == nullptr || length < token.length()) {
+    return false;
+  }
+  const uintptr_t base = reinterpret_cast<uintptr_t>(text);
+  const uintptr_t addr = reinterpret_cast<uintptr_t>(token.ptr());
+  if (addr < base || addr - base > static_cast<uint64_t>(length - token.length())) {
+    return false;
+  }
+  const auto *p = reinterpret_cast<const unsigned char *>(token.ptr());
+  for (int64_t i = 0; i < token.length();) {
+    const unsigned char c = p[i++];
+    if (c < 0x80) {
+      if (c >= 'A' && c <= 'Z') {
+        return false;
+      }
+    } else if (i + 2 <= token.length() && c >= 0xe4 && c <= 0xe9
+               && (p[i] & 0xc0) == 0x80 && (p[i + 1] & 0xc0) == 0x80
+               && (c != 0xe4 || p[i] >= 0xb8)) {
+      i += 2;
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
 int ObAddWord::casedown_word(const ObFTWord &src, ObFTWord &dst)
 {
   int ret = OB_SUCCESS;
   if (OB_UNLIKELY(src.empty())) {
     ret = OB_INVALID_ARGUMENT;
-  } else if (flag_.casedown()) {
+  } else if (flag_.casedown() && !is_unchanged_input_token(src.get_word().get_string(),
+                                                          stable_text_, stable_length_)) {
     ObString dst_str;
     if (OB_FAIL(ObCharset::tolower(
                     word_meta_.get_collation_type(),

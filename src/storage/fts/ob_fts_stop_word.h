@@ -106,6 +106,11 @@ public:
       common::ObIAllocator &allocator,
       ObFTWordMap &word_map);
   ~ObAddWord() = default;
+  void set_stable_utf8_input(const char *text, int64_t length)
+  {
+    stable_text_ = text;
+    stable_length_ = length;
+  }
   int process_word(
       const char *word,
       const int64_t word_len,
@@ -136,6 +141,8 @@ private:
   int64_t min_token_size_;
   int64_t max_token_size_;
   ObAddWordFlag flag_;
+  const char *stable_text_ = nullptr;
+  int64_t stable_length_ = 0;
 };
 
 } // end namespace storage
