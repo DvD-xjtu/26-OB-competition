@@ -39,18 +39,16 @@ public:
   int output_result(TokenizeContext &ctx);
 
 private:
-  int prepare(TokenizeContext &ctx);
+  struct TokenRange
+  {
+    ObFTSortList::CellIter begin_;
+    ObFTSortList::CellIter end_;
+    int64_t start_offset() const { return (*begin_).offset_; }
+  };
 
-  int add_chain(ObIKTokenChain *chain);
-
-  int optimize(TokenizeContext &ctx,
-               ObIKTokenChain *option,
-               ObFTSortList::CellIter iter,
-               int64_t fulltext_len,
-               ObIKTokenChain *&best);
-
-  int try_add_next_words(ObIKTokenChain *chain,
-                         ObFTSortList::CellIter iter,
+  int optimize(const TokenRange &range, ObIKTokenChain *&best);
+  int try_add_next_words(ObFTSortList::CellIter iter,
+                         ObFTSortList::CellIter end,
                          ObIKTokenChain *option,
                          bool need_conflict,
                          ObList<ObFTSortList::CellIter, ObIAllocator> &conflict_stack);
@@ -61,7 +59,7 @@ private:
 
 private:
   ObArenaAllocator alloc_;
-  common::ObSEArray<ObIKTokenChain *, 32> chains_;
+  common::ObSEArray<TokenRange, 32> chains_;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ObIKArbitrator);

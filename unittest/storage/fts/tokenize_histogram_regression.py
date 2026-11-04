@@ -23,7 +23,7 @@ def run_queries(cursor):
         ("beng", None), ("ik", None), ("space", None), ("ngram", None), ("ngram2", None),
         ("beng", [{"output": "all"}]), ("ik", [{"output": "all"}]),
         ("ik", [{"additional_args": [{"ik_mode": "max_word"}]}]),
-        ("beng", [{"additional_args": [{"min_token_size": 2}, {"max_token_size": 8}]}]),
+        ("beng", [{"additional_args": [{"min_token_size": 2}, {"max_token_size": 12}]}]),
         ("ik", [{"additional_args": [{"ik_mode": "unsupported"}]}]),
     ]
     rows = []

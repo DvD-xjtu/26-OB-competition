@@ -29,11 +29,11 @@ class ObFTDictHub;
 class ObIKCJKProcessor : public ObIIKProcessor
 {
 public:
-  ObIKCJKProcessor(const ObIFTDict &dict_main, ObIAllocator &alloc)
-      : hits_(alloc), dict_main_(dict_main), cjk_start_(-1), cjk_end_(-1)
+  ObIKCJKProcessor(const ObIFTDict &dict_main, ObIAllocator &allocator)
+      : hits_(8 * sizeof(ObDATrieHit), allocator), dict_main_(dict_main)
   {
   }
-  ~ObIKCJKProcessor() override { hits_.reset(); }
+  ~ObIKCJKProcessor() override = default;
 
 public:
   int do_process(TokenizeContext &ctx,
@@ -42,10 +42,8 @@ public:
                  const ObFTCharUtil::CharType type) override;
 
 private:
-  ObList<ObDATrieHit, ObIAllocator> hits_;
+  common::ObSEArray<ObDATrieHit, 8, ObIAllocator &> hits_;
   const ObIFTDict &dict_main_;
-  int64_t cjk_start_;
-  int64_t cjk_end_;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ObIKCJKProcessor);

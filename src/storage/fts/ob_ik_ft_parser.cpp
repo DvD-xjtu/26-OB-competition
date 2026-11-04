@@ -140,7 +140,7 @@ int ObIKFTParser::produce()
 {
   int ret = OB_SUCCESS;
   // Loop until end or has data to output
-  while (OB_SUCC(ret) && segment_->ctx_.result_list().empty() && !segment_->ctx_.iter_end()) {
+  while (OB_SUCC(ret) && !segment_->ctx_.has_result() && !segment_->ctx_.iter_end()) {
     if (OB_FAIL(process_next_batch())) {
       if (OB_ITER_END == ret) {
         // ok

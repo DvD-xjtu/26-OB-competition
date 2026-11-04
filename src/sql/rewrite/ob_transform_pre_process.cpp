@@ -178,8 +178,9 @@ int ObTransformPreProcess::transform_one_stmt(common::ObIArray<ObParentDMLStmt> 
       }
     }
     if (OB_SUCC(ret)) {
+      const ObDMLStmt *parent = parent_stmts.empty() ? nullptr : parent_stmts.at(parent_stmts.count() - 1).stmt_;
       if (stmt->get_match_exprs().count() > 0 &&
-          OB_FAIL(preserve_order_for_fulltext_search(stmt, is_happened))) {
+          OB_FAIL(preserve_order_for_fulltext_search(stmt, parent, is_happened))) {
       } else {
         trans_happened |= is_happened;
       }
@@ -3788,9 +3789,73 @@ int ObTransformPreProcess::do_flatten_conditions(ObDMLStmt *stmt, ObIArray<ObRaw
   return ret;
 }
 
+// The outer aggregate consumes only the number of rows from this view. For
+// an ordinary LIMIT, that number is independent of the order in which
+// matching documents are visited. Do not apply this to a top-level LIMIT:
+// there the document identities, including implicit relevance order, matter.
+bool ObTransformPreProcess::is_counted_match_view(const ObDMLStmt *parent, const ObSelectStmt &view)
+{
+  if (parent == nullptr || parent == &view || !parent->is_select_stmt()
+      || !view.has_limit() || view.get_offset_expr() != nullptr
+      || view.has_fetch() || view.is_fetch_with_ties()
+      || view.get_limit_percent_expr() != nullptr || view.has_order_by()
+      || view.has_group_by() || view.has_having() || view.has_distinct()
+      || view.is_set_stmt() || view.has_window_function() || view.has_window_function_filter()
+      || view.is_contains_assignment() || view.get_semi_info_size() != 0
+      || view.has_for_update() || view.is_calc_found_rows() || !view.is_single_table_stmt()
+      || view.get_subquery_expr_size() != 0 || view.get_condition_size() != 1) {
+    return false;
+  }
+  // MATCH must be a plain membership test. Keep scoring for comparisons,
+  // boosted/boolean search, or a query that observes the score.
+  if (view.get_match_exprs().count() != 1) {
+    return false;
+  }
+  const ObMatchFunRawExpr *match = view.get_match_exprs().at(0);
+  const ObRawExpr *filter = view.get_condition_exprs().at(0);
+  if (match == nullptr || match->is_es_match() || match->get_mode_flag() != NATURAL_LANGUAGE_MODE
+      || !match->get_columns_boosts().empty() || match->get_param_text_expr() != nullptr
+      || filter == nullptr || !(filter == match || (filter->get_expr_type() == T_OP_BOOL
+           && filter->get_param_count() == 1 && filter->get_param_expr(0) == match))) {
+    return false;
+  }
+  const ObSelectStmt &outer = *static_cast<const ObSelectStmt *>(parent);
+  if (!outer.is_single_table_stmt() || !outer.is_scala_group_by()
+      || outer.get_select_item_size() != 1 || outer.get_aggr_item_size() != 1
+      || outer.get_condition_size() != 0 || outer.has_having() || outer.has_order_by()
+      || outer.has_window_function() || outer.has_window_function_filter() || outer.is_set_stmt()
+      || outer.has_distinct() || outer.has_limit() || outer.has_for_update()
+      || outer.is_contains_assignment() || outer.get_semi_info_size() != 0
+      || outer.get_subquery_expr_size() != 0) {
+    return false;
+  }
+  const TableItem *source = view.get_table_item(0);
+  const TableItem *derived = outer.get_table_item(0);
+  const ObAggFunRawExpr *agg = outer.get_aggr_items().at(0);
+  if (source == nullptr || !source->is_basic_table() || source->is_has_sample_info()
+      || derived == nullptr || !derived->is_generated_table() || derived->cte_type_ != TableItem::NOT_CTE
+      || derived->ref_query_ != &view
+      || agg == nullptr || agg != outer.get_select_item(0).expr_
+      || agg->get_expr_type() != T_FUN_COUNT || agg->get_param_count() != 0) {
+    return false;
+  }
+  // Avoid changing which expressions execute on limited rows (e.g. UDFs
+  // or generated columns that can raise errors).
+  for (int64_t i = 0; i < view.get_select_item_size(); ++i) {
+    const ObRawExpr *expr = view.get_select_item(i).expr_;
+    if (expr == nullptr || !(expr->is_const_raw_expr() ||
+        (expr->is_column_ref_expr() && !static_cast<const ObColumnRefRawExpr *>(expr)->is_generated_column()))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // full-text index queries on a single base table are processed with order preservation. 
 // (Order is not preserved in multi-table join scenarios.)
-int ObTransformPreProcess::preserve_order_for_fulltext_search(ObDMLStmt *stmt, bool& trans_happened)
+int ObTransformPreProcess::preserve_order_for_fulltext_search(ObDMLStmt *stmt,
+                                                             const ObDMLStmt *parent,
+                                                             bool &trans_happened)
 {
   int ret = OB_SUCCESS;
   trans_happened = false;
@@ -3936,7 +4001,8 @@ int ObTransformPreProcess::preserve_order_for_fulltext_search(ObDMLStmt *stmt, b
       }
     }
   }
-  if (OB_SUCC(ret) && nullptr != match_expr && !static_cast<ObMatchFunRawExpr*>(match_expr)->is_es_match()) {
+  if (OB_SUCC(ret) && nullptr != match_expr && !static_cast<ObMatchFunRawExpr*>(match_expr)->is_es_match()
+      && !(stmt->is_select_stmt() && is_counted_match_view(parent, *static_cast<const ObSelectStmt *>(stmt)))) {
     OrderItem item(match_expr, default_desc_direction());
     if (OB_FAIL(stmt->add_order_item(item))) {
     } else {
