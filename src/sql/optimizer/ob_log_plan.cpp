@@ -11989,6 +11989,31 @@ int ObLogPlan::construct_startup_filter_for_limit(ObRawExpr *limit_expr, ObLogic
   return ret;
 }
 
+// The inverted scan already emits exactly the matching documents. A direct
+// COUNT(*) needs their cardinality and never reads the predicate or a score.
+static bool counts_only_match_rows(const ObDMLStmt *stmt, const ObTextRetrievalInfo &info,
+                                   const ObRawExpr &predicate)
+{
+  if (info.need_calc_relevance_ || stmt == nullptr || !stmt->is_select_stmt()
+      || predicate.get_expr_type() != T_OP_BOOL || predicate.get_param_count() != 1
+      || predicate.get_param_expr(0) != info.match_expr_) {
+    return false;
+  }
+  const ObSelectStmt &select = *static_cast<const ObSelectStmt *>(stmt);
+  if (!select.is_single_table_stmt() || select.get_table_item(0) == nullptr
+      || !select.get_table_item(0)->is_basic_table() || !select.is_scala_group_by()
+      || select.get_condition_size() != 1 || select.get_select_item_size() != 1
+      || select.get_aggr_item_size() != 1 || select.has_having() || select.has_order_by()
+      || select.has_window_function() || select.has_window_function_filter()
+      || select.has_limit() || select.is_set_stmt() || select.has_distinct()
+      || select.get_semi_info_size() != 0 || select.get_subquery_expr_size() != 0) {
+    return false;
+  }
+  const ObAggFunRawExpr *agg = select.get_aggr_items().at(0);
+  return agg != nullptr && agg == select.get_select_item(0).expr_
+      && agg->get_expr_type() == T_FUN_COUNT && agg->get_param_count() == 0;
+}
+
 int ObLogPlan::prepare_text_retrieval_scan(const ObIArray<ObRawExpr *> &scan_match_exprs,
                                            const ObIArray<ObRawExpr *> &scan_match_filters,
                                            const ObIArray<ObRawExpr *> &all_match_filters,
@@ -12040,7 +12065,7 @@ int ObLogPlan::prepare_text_retrieval_scan(const ObIArray<ObRawExpr *> &scan_mat
   } else {
     ObTextRetrievalInfo &tr_info = table_scan->get_text_retrieval_info();
     tr_info.match_expr_ = match_against;
-    tr_info.pushdown_match_filter_ = match_pred;
+    tr_info.pushdown_match_filter_ = counts_only_match_rows(get_stmt(), tr_info, *match_pred) ? nullptr : match_pred;
     // The mapping table is absent when the data-table rowkey is used as the document ID.
     table_scan->set_doc_id_index_table_id(tr_info.doc_id_idx_tid_);
     if (table_scan->is_vec_adaptive_scan() || table_scan->is_vec_idx_scan_post_filter()) {
