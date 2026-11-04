@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #define USING_LOG_PREFIX STORAGE_FTS
 
 #include "storage/fts/dict/ob_ft_dat_dict.h"
@@ -246,6 +247,67 @@ int ObFTDATBuilder<DATA_TYPE>::encode(const ObString &word, ObFTWordCode &code, 
   return ret;
 }
 
+// The persisted DAT stores a byte-keyed alphabet. Build an optional private
+// projection once per immutable shard. Empty pages reject a character, sparse
+// pages retain the original lookup, and populated pages preserve its exact code.
+const ObFTWordCode *ObArrayHashMap::build_read_only_bmp_index(ObIAllocator &allocator) const
+{
+  constexpr int page_size = 256;
+  constexpr int dense_threshold = 16;
+  uint8_t counts[page_size] = {};
+  int dense_pages = 0;
+  for (uint32_t i = 0; i < header_.capacity_; ++i) {
+    const Entry &entry = header_.data[i];
+    const int cp = entry.used ? canonical_bmp_scalar(entry.word.get_word()) : -1;
+    if (cp >= 0 && counts[cp >> 8] < dense_threshold && ++counts[cp >> 8] == dense_threshold) {
+      ++dense_pages;
+    }
+  }
+  const int words = page_size * (dense_pages + 1);
+  if (words * sizeof(ObFTWordCode) > header_.buffer_size_) { return nullptr; }
+  auto *table = static_cast<ObFTWordCode *>(allocator.alloc(words * sizeof(ObFTWordCode)));
+  if (table == nullptr) { return nullptr; }
+  std::fill_n(table, words, -1);
+  int next = page_size;
+  for (int page = 0; page < page_size; ++page) {
+    if (counts[page] >= dense_threshold) {
+      table[page] = next;
+      next += page_size;
+    } else if (counts[page] != 0) {
+      table[page] = -2;
+    }
+  }
+  for (uint32_t i = 0; i < header_.capacity_; ++i) {
+    const Entry &entry = header_.data[i];
+    const int cp = entry.used ? canonical_bmp_scalar(entry.word.get_word()) : -1;
+    if (cp >= 0 && table[cp >> 8] >= 0) {
+      ObFTWordCode &code = table[table[cp >> 8] + (cp & 255)];
+      if (entry.code < 0 || (code >= 0 && code != entry.code)) { return nullptr; }
+      code = entry.code;
+    }
+  }
+  return table;
+}
+
+template <typename DATA_TYPE>
+int ObFTDATReader<DATA_TYPE>::get_word_code(const ObString &ft_char, ObFTWordCode &code) const
+{
+  if (bmp_codes_ != nullptr) {
+    const int cp = canonical_bmp_scalar(ft_char);
+    if (cp >= 0) {
+      const int offset = bmp_codes_[cp >> 8];
+      if (offset != -2) {
+        if (offset < 0 || bmp_codes_[offset + (cp & 255)] < 0) { return OB_ENTRY_NOT_EXIST; }
+        code = bmp_codes_[offset + (cp & 255)];
+        return OB_SUCCESS;
+      }
+    }
+  }
+  ObFTSingleWord raw;
+  raw.set_word(ft_char.ptr(), ft_char.length());
+  return dat_->get_map()->find(raw, code);
+}
+
 template <typename DATA_TYPE>
 int ObFTDATReader<DATA_TYPE>::match_with_hit(const ObString &ft_char,
                                              const ObDATrieHit &last_hit,
@@ -254,13 +316,10 @@ int ObFTDATReader<DATA_TYPE>::match_with_hit(const ObString &ft_char,
   int ret = OB_SUCCESS;
   ObFTWordCode code;
   hit.set_unmatch();
-  auto *map = dat_->get_map();
   int32_t *base = reinterpret_cast<int32_t *>(dat_->buff + dat_->base_offset_);
   int32_t *check = reinterpret_cast<int32_t *>(dat_->buff + dat_->check_offset_);
 
-  ObFTSingleWord word;
-  word.set_word(ft_char.ptr(), ft_char.length());
-  if (OB_FAIL(dat_->get_map()->find(word, code)) && OB_ENTRY_NOT_EXIST != ret) {
+  if (OB_FAIL(get_word_code(ft_char, code)) && OB_ENTRY_NOT_EXIST != ret) {
   } else if (OB_ENTRY_NOT_EXIST == ret) {
     ret = OB_SUCCESS;
     hit.set_unmatch();

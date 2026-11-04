@@ -25,6 +25,23 @@ namespace oceanbase
 {
 namespace storage
 {
+// Return a scalar only for a single canonical UTF-8 sequence in the BMP.
+// Other encodings and multi-character inputs keep their bytewise lookup.
+OB_INLINE int canonical_bmp_scalar(const ObString &word)
+{
+  const auto *p = reinterpret_cast<const unsigned char *>(word.ptr());
+  if (word.length() == 1 && p[0] < 0x80) {
+    return p[0];
+  } else if (word.length() == 2 && p[0] >= 0xc2 && p[0] <= 0xdf && (p[1] & 0xc0) == 0x80) {
+    return ((p[0] & 0x1f) << 6) | (p[1] & 0x3f);
+  } else if (word.length() == 3 && p[0] >= 0xe0 && p[0] <= 0xef
+             && (p[1] & 0xc0) == 0x80 && (p[2] & 0xc0) == 0x80
+             && (p[0] != 0xe0 || p[1] >= 0xa0) && (p[0] != 0xed || p[1] < 0xa0)) {
+    return ((p[0] & 15) << 12) | ((p[1] & 63) << 6) | (p[2] & 63);
+  }
+  return -1;
+}
+
 typedef int32_t ObFTWordCode;
 typedef int32_t ObFTWordBase;
 typedef uint32_t ObFTWordStateIndex;

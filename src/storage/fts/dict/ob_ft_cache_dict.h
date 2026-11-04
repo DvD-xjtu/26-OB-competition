@@ -33,8 +33,8 @@ namespace storage
 class ObFTCacheDict final : public ObIFTDict
 {
 public:
-  ObFTCacheDict(ObCollationType coll_type, ObFTDAT *dat)
-      : coll_type_(coll_type), dat_(dat), reader_(dat)
+  ObFTCacheDict(ObCollationType coll_type, ObFTDAT *dat, ObIAllocator *allocator = nullptr)
+      : coll_type_(coll_type), dat_(dat), reader_(dat, allocator)
   {
   }
   int init() override;

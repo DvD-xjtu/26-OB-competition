@@ -382,19 +382,8 @@ int ObFTRangeDict::match_with_hit(const ObString &single_word,
 // 256-codepoint page. Only canonical, single UTF-8 scalars enter this path.
 static int char_page_slot(const ObString &word)
 {
-  const auto *p = reinterpret_cast<const unsigned char *>(word.ptr());
-  const int len = word.length();
-  if (len == 1 && p[0] < 0x80) {
-    return p[0];
-  } else if (len == 2 && p[0] >= 0xc2 && p[0] <= 0xdf && (p[1] & 0xc0) == 0x80) {
-    const int cp = ((p[0] & 0x1f) << 6) | (p[1] & 0x3f);
-    return cp <= 255 ? cp : 255 + (cp >> 8);
-  } else if (len == 3 && p[0] >= 0xe0 && p[0] <= 0xef
-             && (p[1] & 0xc0) == 0x80 && (p[2] & 0xc0) == 0x80
-             && (p[0] != 0xe0 || p[1] >= 0xa0) && (p[0] != 0xed || p[1] < 0xa0)) {
-    return 255 + ((p[0] & 0x0f) << 4) + ((p[1] & 0x3f) >> 2);
-  }
-  return -1;
+  const int cp = canonical_bmp_scalar(word);
+  return cp < 256 ? cp : 255 + (cp >> 8);
 }
 
 void ObFTRangeDict::build_char_page_index()
@@ -504,7 +493,7 @@ int ObFTRangeDict::build_dict_from_cache(const ObFTCacheRangeContainer &range_co
     ObFTCacheRangeHandle *ptr = *iter;
     ObFTCacheDict *dict = nullptr;
     ObFTDAT *dat = ptr->value_->dat_block_;
-    if (OB_ISNULL(dict = OB_NEWx(ObFTCacheDict, &range_alloc_, ObCollationType::CS_TYPE_UTF8MB4_BIN, dat))) {
+    if (OB_ISNULL(dict = OB_NEWx(ObFTCacheDict, &range_alloc_, ObCollationType::CS_TYPE_UTF8MB4_BIN, dat, &range_alloc_))) {
       ret = OB_ALLOCATE_MEMORY_FAILED;
     } else {
       ObFTRange range;
