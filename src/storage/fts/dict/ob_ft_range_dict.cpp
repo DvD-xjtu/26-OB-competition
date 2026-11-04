@@ -378,8 +378,81 @@ int ObFTRangeDict::match_with_hit(const ObString &single_word,
   return last_hit.dict_->match_with_hit(single_word, last_hit, hit);
 }
 
+// Latin-1 has one slot per character; the rest of the BMP has one per
+// 256-codepoint page. Only canonical, single UTF-8 scalars enter this path.
+static int char_page_slot(const ObString &word)
+{
+  const auto *p = reinterpret_cast<const unsigned char *>(word.ptr());
+  const int len = word.length();
+  if (len == 1 && p[0] < 0x80) {
+    return p[0];
+  } else if (len == 2 && p[0] >= 0xc2 && p[0] <= 0xdf && (p[1] & 0xc0) == 0x80) {
+    const int cp = ((p[0] & 0x1f) << 6) | (p[1] & 0x3f);
+    return cp <= 255 ? cp : 255 + (cp >> 8);
+  } else if (len == 3 && p[0] >= 0xe0 && p[0] <= 0xef
+             && (p[1] & 0xc0) == 0x80 && (p[2] & 0xc0) == 0x80
+             && (p[0] != 0xe0 || p[1] >= 0xa0) && (p[0] != 0xed || p[1] < 0xa0)) {
+    return 255 + ((p[0] & 0x0f) << 4) + ((p[1] & 0x3f) >> 2);
+  }
+  return -1;
+}
+
+void ObFTRangeDict::build_char_page_index()
+{
+  char_page_ranges_ = nullptr;
+  const int64_t ranges = range_dicts_.size();
+  if (!ordered_ranges_ || ranges == 0 || ranges > INT32_MAX) {
+    return;
+  }
+  auto *pages = static_cast<int32_t *>(range_alloc_.alloc(CHAR_PAGE_SLOTS * sizeof(int32_t)));
+  if (pages == nullptr) {
+    return;
+  }
+  const auto collation = ObCollationType::CS_TYPE_UTF8MB4_BIN;
+  int64_t first = 0;
+  for (int slot = 0; slot < CHAR_PAGE_SLOTS; ++slot) {
+    const int low = slot < 256 ? slot : (slot - 255) << 8;
+    const int high = slot < 256 ? low : low + 255;
+    pages[slot] = MIXED_PAGE;
+    if (low >= 0xd800 && low <= 0xdfff) {
+      continue;
+    }
+    char lo_buf[4], hi_buf[4];
+    int32_t lo_len = 0, hi_len = 0;
+    if (ObCharset::wc_mb(collation, low, lo_buf, sizeof(lo_buf), lo_len) != OB_SUCCESS
+        || ObCharset::wc_mb(collation, high, hi_buf, sizeof(hi_buf), hi_len) != OB_SUCCESS) {
+      return;
+    }
+    const ObString lo(lo_len, lo_buf), hi(hi_len, hi_buf);
+    // Canonical UTF-8 sorts in scalar order under utf8mb4_bin, so the
+    // first range ending at/after lo can only move forward. For overlaps
+    // keep the first possible range, just like the ordinary lower bound.
+    while (first < ranges && ObCharset::strcmp(collation, range_dicts_[first].end_.get_word(), lo) < 0) {
+      ++first;
+    }
+    if (first == ranges || ObCharset::strcmp(collation, range_dicts_[first].start_.get_word(), hi) > 0) {
+      pages[slot] = -1;
+    } else if (ObCharset::strcmp(collation, range_dicts_[first].start_.get_word(), lo) <= 0
+               && ObCharset::strcmp(collation, range_dicts_[first].end_.get_word(), hi) >= 0) {
+      pages[slot] = static_cast<int32_t>(first);
+    }
+  }
+  char_page_ranges_ = pages;
+}
+
 int ObFTRangeDict::find_first_char_range(const ObString &single_word, ObIFTDict *&dict) const
 {
+  if (char_page_ranges_ != nullptr) {
+    const int slot = char_page_slot(single_word);
+    if (slot >= 0 && char_page_ranges_[slot] != MIXED_PAGE) {
+      const int32_t index = char_page_ranges_[slot];
+      if (index < 0) {
+        return OB_ENTRY_NOT_EXIST;
+      }
+      dict = range_dicts_[index].dict_;
+      return OB_SUCCESS;
+    }
+  }
   if (ordered_ranges_) {
     const auto collation = ObCollationType::CS_TYPE_UTF8MB4_BIN;
     int64_t first = 0;
@@ -424,6 +497,7 @@ int ObFTRangeDict::find_first_char_range(const ObString &single_word, ObIFTDict 
 int ObFTRangeDict::build_dict_from_cache(const ObFTCacheRangeContainer &range_container)
 {
   int ret = OB_SUCCESS;
+  char_page_ranges_ = nullptr;
   for (ObList<ObFTCacheRangeHandle *, ObIAllocator>::const_iterator iter = range_container.get_handles().begin();
        OB_SUCC(ret) && iter != range_container.get_handles().end();
        iter++) {
@@ -448,6 +522,9 @@ int ObFTRangeDict::build_dict_from_cache(const ObFTCacheRangeContainer &range_co
       if (OB_FAIL(range_dicts_.push_back(range))) {
       }
     }
+  }
+  if (OB_SUCC(ret)) {
+    build_char_page_index();
   }
   return ret;
 }

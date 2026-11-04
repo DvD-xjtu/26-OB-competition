@@ -93,11 +93,15 @@ private:
     for (int64_t i = 0; i < range_dicts_.size(); i++) {
       range_dicts_[i].dict_->~ObIFTDict(); // destroy dict
     }
+    char_page_ranges_ = nullptr;
     range_dicts_.reset();
     ordered_ranges_ = true;
     range_alloc_.reset();
   }
 
+  void build_char_page_index();
+  static constexpr int CHAR_PAGE_SLOTS = 511;
+  static constexpr int32_t MIXED_PAGE = -2;
   int find_first_char_range(const ObString &single_word, ObIFTDict *&dict) const;
 
 private:
@@ -107,6 +111,7 @@ private:
   ObArenaAllocator range_alloc_;
   ObVector<ObFTRange, ObArenaAllocator> range_dicts_;
   bool ordered_ranges_ = true;
+  const int32_t *char_page_ranges_ = nullptr;
   ObFTCacheRangeContainer *range_container_; // only used to read cache
 
 private:
