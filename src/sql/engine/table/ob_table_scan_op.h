@@ -702,7 +702,9 @@ private:
   int inner_rescan_for_tsc();
 
   int inner_get_next_fts_index_row();
-  int fetch_next_fts_index_rows();
+  int inner_get_next_fts_index_batch(const int64_t max_row_cnt);
+  int fetch_next_fts_index_rows(bool batch = false);
+  int fill_fts_batch_output(const int64_t size);
   int fill_generated_fts_cols(blocksstable::ObDatumRow *row);
   int resolve_fts_projection();
   int get_output_fts_col_expr_by_type(const ObExprOperatorType &type, ObExpr *&expr);
@@ -737,6 +739,7 @@ protected:
   ObDomainIndexCache domain_index_;
   ObFTIndexRowCache fts_index_;
   ObExpr *fts_projection_[4] = {};
+  bool fts_multi_row_output_ = true;
 
   // output_ is used to output data, TSC operator directly invokes output_::get_next_row(s),
   // it points to fold_iter_ in group rescan and iter_tree_ in normal scan.

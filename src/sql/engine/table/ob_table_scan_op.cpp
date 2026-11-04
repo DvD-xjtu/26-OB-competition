@@ -1662,6 +1662,9 @@ int ObTableScanOp::inner_rescan_for_tsc()
   input_row_cnt_ = 0;
   output_row_cnt_ = 0;
   iter_end_ = false;
+  if (MY_SPEC.is_fts_ddl_) {
+    fts_index_.reuse();
+  }
   MY_INPUT.key_ranges_.reuse();
   MY_INPUT.mbr_filters_.reuse();
   bool need_real_rescan = false;
@@ -2202,6 +2205,8 @@ int ObTableScanOp::inner_get_next_batch(const int64_t max_row_cnt)
   if (OB_UNLIKELY(rand_scan_processor_.use_rand_scan())) {
     if (OB_FAIL(rand_scan_processor_.inner_get_next_batch(max_row_cnt))) {
     }
+  } else if (OB_UNLIKELY(MY_SPEC.is_fts_ddl_ && nullptr == tsc_rtdef_.scan_rtdef_.sample_info_)) {
+    ret = inner_get_next_fts_index_batch(max_row_cnt);
   } else if (OB_FAIL(inner_get_next_batch_for_tsc(max_row_cnt))) {
   }
 
@@ -3643,7 +3648,82 @@ int ObTableScanOp::inner_get_next_fts_index_row()
   return ret;
 }
 
-int ObTableScanOp::fetch_next_fts_index_rows()
+// Keep a batch within one document. Its word bytes and copied document ID
+// belong to the cursor until the next segment, while the count datums are
+// copied into the per-row expression frames by fill_generated_fts_cols().
+int ObTableScanOp::inner_get_next_fts_index_batch(const int64_t max_row_cnt)
+{
+  int ret = OB_SUCCESS;
+  int64_t count = 0;
+  ObEvalCtx::BatchInfoScopeGuard guard(eval_ctx_);
+  if (OB_UNLIKELY(max_row_cnt <= 0 || MY_SPEC.max_batch_size_ <= 0)) {
+    ret = OB_INVALID_ARGUMENT;
+  } else if (fts_projection_[0] == nullptr && OB_FAIL(resolve_fts_projection())) {
+  } else {
+    const int64_t capacity = fts_multi_row_output_ ? min(max_row_cnt, MY_SPEC.max_batch_size_) : 1;
+    guard.set_batch_size(capacity);
+    while (OB_SUCC(ret) && count < capacity) {
+      blocksstable::ObDatumRow *row = nullptr;
+      ret = fts_index_.get_next_row(row);
+      if (ret == OB_ITER_END && count == 0) {
+        ret = fetch_next_fts_index_rows(true);
+      } else if (OB_SUCC(ret)) {
+        guard.set_batch_idx(count);
+        if (OB_FAIL(fill_generated_fts_cols(row))) {
+        } else {
+          ++count;
+        }
+      }
+    }
+  }
+  const bool exhausted = ret == OB_ITER_END && count == 0;
+  if (ret == OB_ITER_END) {
+    ret = OB_SUCCESS;
+  }
+  if (OB_SUCC(ret) && count > 0 && OB_FAIL(fill_fts_batch_output(count))) {
+  } else if (OB_SUCC(ret)) {
+    brs_.size_ = count;
+    brs_.end_ = exhausted;
+    brs_.reset_skip(count);
+    brs_.all_rows_active_ = true;
+  }
+  return ret;
+}
+
+int ObTableScanOp::fill_fts_batch_output(const int64_t size)
+{
+  int ret = OB_SUCCESS;
+  ObEvalCtx::BatchInfoScopeGuard guard(eval_ctx_);
+  guard.set_batch_size(size);
+  guard.set_batch_idx(0);
+  for (int64_t i = 0; OB_SUCC(ret) && i < MY_SPEC.output_.count(); ++i) {
+    ObExpr *expr = MY_SPEC.output_.at(i);
+    if (OB_ISNULL(expr)) {
+      ret = OB_ERR_UNEXPECTED;
+    } else {
+      if (expr != fts_projection_[0] && expr != fts_projection_[1]
+          && expr != fts_projection_[2] && expr != fts_projection_[3]) {
+        ObDatum *source = nullptr;
+        if (OB_FAIL(expr->eval(eval_ctx_, source))) {
+        } else if (expr->is_batch_result()) {
+          ObDatum *slots = expr->locate_batch_datums(eval_ctx_);
+          for (int64_t j = 1; j < size; ++j) {
+            slots[j] = *source;
+          }
+        }
+      }
+      if (OB_SUCC(ret)) {
+        if (expr->is_batch_result()) {
+          expr->get_evaluated_flags(eval_ctx_).set_all(size);
+        }
+        expr->set_evaluated_projected(eval_ctx_);
+      }
+    }
+  }
+  return ret;
+}
+
+int ObTableScanOp::fetch_next_fts_index_rows(bool batch)
 {
   int ret = OB_SUCCESS;
   bool has_segment_word = false;
@@ -3651,9 +3731,23 @@ int ObTableScanOp::fetch_next_fts_index_rows()
     ObDatum *ft_datum = nullptr;
     ObDatum *doc_id_datum = nullptr;
 
-    if (OB_FAIL(ObTableScanOp::inner_get_next_row_implement())) {
-      if (OB_ITER_END != ret) {
+    ObEvalCtx::BatchInfoScopeGuard guard(eval_ctx_);
+    if (batch) {
+      guard.set_batch_size(1);
+      guard.set_batch_idx(0);
+      if (iter_end_) {
+        ret = OB_ITER_END;
+      } else if (OB_FAIL(inner_get_next_batch_for_tsc(1))) {
+      } else if (brs_.size_ == 0 || (brs_.skip_ != nullptr && brs_.skip_->at(0))) {
+        if (brs_.end_) {
+          ret = OB_ITER_END;
+        }
+        continue;
       }
+    } else {
+      ret = inner_get_next_row_implement();
+    }
+    if (OB_FAIL(ret)) {
     } else if (fts_projection_[0] == nullptr && OB_FAIL(resolve_fts_projection())) {
     } else if (OB_FAIL(fts_projection_[MY_SPEC.is_fts_index_aux_ ? 0 : 1]->eval(eval_ctx_, ft_datum))) {
     } else if (OB_FAIL(fts_projection_[MY_SPEC.is_fts_index_aux_ ? 1 : 0]->eval(eval_ctx_, doc_id_datum))) {
@@ -3711,6 +3805,22 @@ int ObTableScanOp::resolve_fts_projection()
     if (OB_FAIL(get_output_fts_col_expr_by_type(types[i], fts_projection_[i]))) {
     } else if (OB_ISNULL(fts_projection_[i])) {
       ret = OB_ERR_UNEXPECTED;
+    }
+  }
+  if (OB_SUCC(ret)) {
+    // A scalar word or frequency has only one result slot. Also preserve
+    // row-wise evaluation for custom output expressions that may use a word.
+    fts_multi_row_output_ = fts_projection_[MY_SPEC.is_fts_index_aux_ ? 0 : 1]->is_batch_result()
+                            && fts_projection_[2]->is_batch_result();
+    for (int64_t i = 0; fts_multi_row_output_ && i < MY_SPEC.output_.count(); ++i) {
+      const ObExpr *expr = MY_SPEC.output_.at(i);
+      if (OB_ISNULL(expr)) {
+        ret = OB_ERR_UNEXPECTED;
+        break;
+      } else if (expr != fts_projection_[0] && expr != fts_projection_[1]
+                 && expr != fts_projection_[2] && expr != fts_projection_[3] && expr->arg_cnt_ != 0) {
+        fts_multi_row_output_ = false;
+      }
     }
   }
   if (OB_FAIL(ret)) {
