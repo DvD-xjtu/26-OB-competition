@@ -181,6 +181,45 @@ fail:
   return NULL;
 }
 
+/* Single-copy snapshot restoration. Reference: juanzhi-gcb/seekdb f115d606. */
+int seekdb_cuvs_copy_dataset(void* handle, float* out, long n, long dim)
+{
+  sk_cuvs_index* h = (sk_cuvs_index*)handle;
+  if (!h || !out || n <= 0 || dim <= 0 || n != h->n || dim != h->dim ||
+      (size_t)n > SIZE_MAX / sizeof(float) / (size_t)dim) return 1;
+  if (pthread_mutex_lock(&h->search_mutex) != 0) return 1;
+  DLManagedTensor ds = {0};
+  int rc = 0;
+  if (cuvsCagraIndexGetDataset(h->idx, &ds) != CUVS_SUCCESS) {
+    rc = 2;
+  } else {
+    DLTensor* t = &ds.dl_tensor;
+    if (!t->data || t->ndim != 2 || !t->shape ||
+        t->shape[0] != n || t->shape[1] != dim ||
+        t->dtype.code != kDLFloat || t->dtype.bits != 32 || t->dtype.lanes != 1 ||
+        (t->strides && (t->strides[0] < dim || t->strides[1] != 1))) {
+      rc = 3;
+    } else {
+      const char* data = (const char*)t->data + t->byte_offset;
+      if (!t->strides || t->strides[0] == dim) {
+        if (cudaMemcpy(out, data, sizeof(float) * (size_t)n * (size_t)dim,
+                       cudaMemcpyDefault) != cudaSuccess) rc = 4;
+      } else {
+        /* CAGRA may align dataset rows; copy logical columns, never padding. */
+        for (long row = 0; row < n && rc == 0; ++row) {
+          if (cudaMemcpy(out + (size_t)row * dim,
+                         data + (size_t)row * t->strides[0] * sizeof(float),
+                         sizeof(float) * (size_t)dim, cudaMemcpyDefault) != cudaSuccess) rc = 4;
+        }
+      }
+    }
+  }
+  if (ds.deleter) ds.deleter(&ds);
+  pthread_mutex_unlock(&h->search_mutex);
+  if (rc) fprintf(stderr, "[seekdb_cuvs] copy_dataset rc=%d: %s\n", rc, cuvsGetLastErrorText());
+  return rc;
+}
+
 int seekdb_cuvs_cagra_knn(const float* base, long n, long dim,
                           const float* query, long nq, long topk,
                           unsigned int* out_ids)

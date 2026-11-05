@@ -29,6 +29,9 @@ int main(int argc, char **argv)
   }
   unsigned int ids[10];
   float distances[10];
+  std::vector<float> restored(vectors.size());
+  if (seekdb_cuvs_copy_dataset(index, restored.data(), count, dimension) != 0 ||
+      restored != vectors) { seekdb_cuvs_free(index); return 8; }
   int result = seekdb_cuvs_search(index, vectors.data(), 1, 10, ids, distances);
   seekdb_cuvs_free(index);
   if (result != 0 || ids[0] != 0 || std::fabs(distances[0]) > 0.0001f) return 5;

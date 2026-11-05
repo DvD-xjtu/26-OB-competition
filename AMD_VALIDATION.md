@@ -1,4 +1,20 @@
-# AMD CAGRA persistent-query-worker candidate
+# AMD CAGRA single-copy snapshot candidate
+
+## Snapshot experiment (2026-11-05)
+
+Parent: `amd-cagra-worker-2026` / `7c9f56afa3942209f6734931b3285f17538bc92e`. The user reports official `build=1.881x, query=2.631x, gates=pass`, score 14.055. Query performance already exceeds the 1.5x scoring cap. The older tuned candidate scored 14.409 with build=2.033x/query=1.319x. A single run does not attribute the parent's lower build ratio to worker reuse.
+
+This experiment changes only the snapshot representation. The writer emits OBCUVS03 with IDs and the hipVS index (including its FP32 dataset), omitting the outer duplicate vectors. Relative to the parent, each snapshot removes exactly `rows * dimensions * sizeof(float)` bytes: 128,000,000 bytes at 250K x 128, or 256,000,000 at 250K x 256. These are byte savings, not measured timing gains.
+
+On reload, the fixed hipVS `cuvsCagraIndexGetDataset` accessor restores the host buffer through the new C ABI `seekdb_cuvs_copy_dataset`; no graph rebuild occurs. Shape, FP32 type, strides and copy errors are checked. Dense and row-padded tensors are supported. The reader also accepts OBCUVS02 snapshots; older binaries cannot read OBCUVS03. Load/copy failure frees the unregistered GPU handle. IDs, inserts/rebuild buffering, worker, graph/search parameters, SQL, CPU backend, DDL scheduling and timing boundaries are unchanged. The dataset restoration remains inside load/first-query work when applicable; no work is moved outside measurement.
+
+References: Apache-2.0 public [single-copy snapshot 5be047b](https://github.com/juanzhi-gcb/seekdb/commit/5be047b07bd3011a76b04fd2b2f7c5b39ea9cc2a) and [bridge accessor f115d606](https://github.com/juanzhi-gcb/seekdb/commit/f115d606557dae00bbf5aa91bd61b45de8e6adfc). Their scores are not this candidate's results.
+
+Validation: `python3 tools/hipvs_bridge/test_snapshot.py` compiles the real host snapshot section and bridge accessor with explicit fake GPU operations under AddressSanitizer. It checks V3 size/roundtrip, legacy V2 reading, exact FP32/IDs, restored-buffer append/rebuild, truncation, load/copy failures and handle cleanup, plus dense/padded rows, byte offset, invalid metadata and dataset deleter handling. Logging is stubbed only in that format harness. The complete production adaptor additionally passed syntax checks against real project headers in GPU-enabled and CPU-stub configurations, retaining the documented Apple Clang warning adjustment. Existing worker concurrency/ThreadSanitizer checks pass.
+
+Bridge C and C++ syntax checks used the C API headers from the exact fixed hipVS commit f96a663d0a4441d6f5344bd3ef552b71ae7b370b and DLPack v1.0, with a small explicit host HIP declaration shim because ROCm is unavailable here. The real persistence test now checks that every restored FP32 value equals its original, but this GPU test was not executed locally. Full Linux/ROCm build, actual GPU restart/SQL inserts, Recall, QPS, resources and official score remain pending. First compare this branch with the worker parent; do not assume the byte savings suffice for 3x build.
+
+## Historical worker experiment
 
 ## Compile correction (2026-11-05)
 
