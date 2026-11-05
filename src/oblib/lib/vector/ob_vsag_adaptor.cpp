@@ -32,6 +32,10 @@
 #include <cstdio>
 #include <cstring>
 #include <pthread.h>
+#ifdef __linux__
+#include <sys/syscall.h>
+#include <linux/memfd.h>
+#endif
 #include "vsag/vsag.h"
 #include "vsag/errors.h"
 #include "vsag/dataset.h"
@@ -333,9 +337,19 @@ static bool ob_cuvs_try_search(void *key, vsag::Allocator *alloc,
 static const char OB_CUVS_SNAPSHOT_MAGIC[8] = {'O', 'B', 'C', 'U', 'V', 'S', '0', '3'};
 static const char OB_CUVS_SNAPSHOT_MAGIC_V2[8] = {'O', 'B', 'C', 'U', 'V', 'S', '0', '2'};
 struct ObCuvsSnapshotFile {
-  FILE *file_ = ::tmpfile();
+  FILE *file_ = nullptr;
   char path_[64] = {};
   ObCuvsSnapshotFile() {
+#if defined(__linux__) && defined(SYS_memfd_create)
+    // Temporary bridge staging only: the serialized bytes still flow into the
+    // normal persisted snapshot before CREATE INDEX completes. No graph cache.
+    const int fd = static_cast<int>(::syscall(SYS_memfd_create, "seekdb-cagra", MFD_CLOEXEC));
+    if (fd >= 0) {
+      file_ = ::fdopen(fd, "w+b");
+      if (file_ == nullptr) { ::close(fd); }
+    }
+#endif
+    if (file_ == nullptr) { file_ = ::tmpfile(); }
     if (file_ != nullptr) {
       ::snprintf(path_, sizeof(path_), "/proc/self/fd/%d", ::fileno(file_));
     }

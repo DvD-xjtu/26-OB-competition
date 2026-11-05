@@ -1,4 +1,16 @@
-# AMD CAGRA parallel auxiliary scan candidate
+# AMD CAGRA memory-backed snapshot staging candidate
+
+## Memory staging experiment (2026-11-05)
+
+Parent: `amd-cagra-parallel-2026` / `924db86436e91344eef51d82fec0be1ded9066a5`. User reports official `build=2.923x, query=2.703x, gates=pass`, score 19.67. This new candidate is unmeasured; the parent is retained.
+
+Only temporary bridge staging allocation changes. On Linux with SYS_memfd_create, create an anonymous memory-backed descriptor with MFD_CLOEXEC and wrap it in a binary FILE stream. If creation or fdopen fails, close any unowned descriptor and use the original tmpfile. Non-Linux retains tmpfile. The existing /proc/self/fd bridge path, serialized bytes and final durable seekdb snapshot publication are unchanged. Staging is closed after each operation and no previous graph/result is reused. Serialization, synchronization, final persistence, load and first query remain in their original timing boundaries. Graph/search parameters, FP32 data, worker and DDL scan policy are unchanged.
+
+Rationale: avoid storage-backed staging I/O in the timed DDL/load path. A memfd uses RAM; actual peak memory and platform resource limits still require validation. Existing tmpfile may already benefit from page cache or tmpfs, so a timing gain is not guaranteed. There is no reported score or guaranteed 20/20 for this change.
+
+Checks: complete adaptor host syntax with actual project headers, existing snapshot AddressSanitizer tests, 4,000-task worker ThreadSanitizer, DDL policy checks and diff checks passed. `python3 tools/hipvs_bridge/test_snapshot_staging.py` compiles the production constructor with an emulated Linux syscall/fdopen branch and checks selection, both fallbacks, binary read/write and descriptor cleanup under AddressSanitizer. This emulates the Linux branch on macOS; it is not a real Linux memfd or ROCm run. Official Linux compilation, GPU snapshot load, resources and performance remain pending. The required independent reviewer model is unavailable.
+
+## Historical parallel scan experiment
 
 ## Parallel scan experiment (2026-11-05)
 
