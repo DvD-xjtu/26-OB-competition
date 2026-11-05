@@ -1,0 +1,295 @@
+{
+  "checked_at_utc": "2026-11-05T09:53:11.386154+00:00",
+  "endpoint": "/v1/memory/entries/get",
+  "scope_id": "scp_13ra5sx885a67f3t9dx4cpf4d3",
+  "exact_reads_pass": true,
+  "runs": [
+    {
+      "turn": 1,
+      "checked_at_utc": "2026-11-05T09:53:11.262383+00:00",
+      "http_status": 200,
+      "request_id": "b64efde58f7e6ca0",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 1
+        },
+        "entry_id": "mem_ent_0323d0e2470e4cdfaad5c955434ed150",
+        "entry_version_id": "mem_ver_34043e7e57fe4e14948a5401a50d3a0a"
+      },
+      "entry_version": 1,
+      "state_turn": 1,
+      "expected_balance": 65,
+      "stored_balance": 65,
+      "earned": 20,
+      "spent": 0,
+      "closed": false,
+      "action_sha256_utf8": "eaad556394bea533f2a8ec36bd90bfb60605e923339058b0bbbcc9b5de64ee3f",
+      "story_sha256_utf8": "8e49df5dd412b3fd41497252147d756b2cd1edc727cc50731135b35dddc8e07b",
+      "visible_story_paragraph_span_zero_based_half_open": [
+        1,
+        3
+      ],
+      "checks": {
+        "citation_matches_exactly": true,
+        "entry_active": true,
+        "structured_checkpoint": true,
+        "test_player_and_chapter_match": true,
+        "turn_matches_public_run": true,
+        "action_matches_public_run": true,
+        "balance_matches_public_run": true,
+        "ledger_balances": true,
+        "story_present": true,
+        "story_matches_public_paragraphs_ignoring_whitespace": true
+      },
+      "healthy": true
+    },
+    {
+      "turn": 2,
+      "checked_at_utc": "2026-11-05T09:53:11.282024+00:00",
+      "http_status": 200,
+      "request_id": "c8b5f8b826793879",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 2
+        },
+        "entry_id": "mem_ent_1f65dfb43b0546059eb2501f967ff004",
+        "entry_version_id": "mem_ver_fbc0129c261742f4aec4b2829f951e81"
+      },
+      "entry_version": 1,
+      "state_turn": 2,
+      "expected_balance": 65,
+      "stored_balance": 65,
+      "earned": 20,
+      "spent": 0,
+      "closed": false,
+      "action_sha256_utf8": "ac34fabcd1459e056719f325fa7cde39219f98605db237510f0847b69cb2c8b8",
+      "story_sha256_utf8": "d95324238fded6384488411479ac5b5121597a659fcc64187336cbc4779b2ab4",
+      "visible_story_paragraph_span_zero_based_half_open": [
+        1,
+        4
+      ],
+      "checks": {
+        "citation_matches_exactly": true,
+        "entry_active": true,
+        "structured_checkpoint": true,
+        "test_player_and_chapter_match": true,
+        "turn_matches_public_run": true,
+        "action_matches_public_run": true,
+        "balance_matches_public_run": true,
+        "ledger_balances": true,
+        "story_present": true,
+        "story_matches_public_paragraphs_ignoring_whitespace": true
+      },
+      "healthy": true
+    },
+    {
+      "turn": 3,
+      "checked_at_utc": "2026-11-05T09:53:11.302089+00:00",
+      "http_status": 200,
+      "request_id": "5da4ea1b422bec18",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 3
+        },
+        "entry_id": "mem_ent_8baa1ceeac484ef0b4021304e0c9aeec",
+        "entry_version_id": "mem_ver_69d798defe024065bdb220ab789f78b1"
+      },
+      "entry_version": 1,
+      "state_turn": 3,
+      "expected_balance": 55,
+      "stored_balance": 55,
+      "earned": 20,
+      "spent": 10,
+      "closed": false,
+      "action_sha256_utf8": "4824c7526ab5ccb1757234c15887eca3893c387ec6ba68a4ea33edc863ffe9c7",
+      "story_sha256_utf8": "90f813c16de01c506122e824a24e270c3a10560652f09fd8d00fee9979932321",
+      "visible_story_paragraph_span_zero_based_half_open": [
+        1,
+        4
+      ],
+      "checks": {
+        "citation_matches_exactly": true,
+        "entry_active": true,
+        "structured_checkpoint": true,
+        "test_player_and_chapter_match": true,
+        "turn_matches_public_run": true,
+        "action_matches_public_run": true,
+        "balance_matches_public_run": true,
+        "ledger_balances": true,
+        "story_present": true,
+        "story_matches_public_paragraphs_ignoring_whitespace": true
+      },
+      "healthy": true
+    },
+    {
+      "turn": 4,
+      "checked_at_utc": "2026-11-05T09:53:11.324117+00:00",
+      "http_status": 200,
+      "request_id": "6a44c8ed27632194",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 4
+        },
+        "entry_id": "mem_ent_f02124a1c19340798d6be49c8afeda44",
+        "entry_version_id": "mem_ver_4b27025f05274eb3aa513aecbdc7e183"
+      },
+      "entry_version": 1,
+      "state_turn": 4,
+      "expected_balance": 43,
+      "stored_balance": 43,
+      "earned": 20,
+      "spent": 22,
+      "closed": false,
+      "action_sha256_utf8": "6380f3660f24d5e720252588ae5a48f122bad8b0cd957a8dc3c34a78de940445",
+      "story_sha256_utf8": "6899776401730d755f91c76c33f505dc9a73d7701e283bd6ac1402dea92314c7",
+      "visible_story_paragraph_span_zero_based_half_open": [
+        1,
+        4
+      ],
+      "checks": {
+        "citation_matches_exactly": true,
+        "entry_active": true,
+        "structured_checkpoint": true,
+        "test_player_and_chapter_match": true,
+        "turn_matches_public_run": true,
+        "action_matches_public_run": true,
+        "balance_matches_public_run": true,
+        "ledger_balances": true,
+        "story_present": true,
+        "story_matches_public_paragraphs_ignoring_whitespace": true
+      },
+      "healthy": true
+    },
+    {
+      "turn": 5,
+      "checked_at_utc": "2026-11-05T09:53:11.345408+00:00",
+      "http_status": 200,
+      "request_id": "8af34ba02dd69c2e",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 5
+        },
+        "entry_id": "mem_ent_04b2381603ff42cfad013f8b9ffbad8a",
+        "entry_version_id": "mem_ver_fc6cfe8ccef34451b2ebe92ea3ca726d"
+      },
+      "entry_version": 1,
+      "state_turn": 5,
+      "expected_balance": 18,
+      "stored_balance": 18,
+      "earned": 20,
+      "spent": 47,
+      "closed": false,
+      "action_sha256_utf8": "88fd4daad585601ab03c314c9ad0b65e95c8c313d6ebdca42a0bd6d1a9d797b1",
+      "story_sha256_utf8": "386fd1b8c787558534f617f210975466f1136f880f20b2d9a13c1bba735c3d02",
+      "visible_story_paragraph_span_zero_based_half_open": [
+        1,
+        4
+      ],
+      "checks": {
+        "citation_matches_exactly": true,
+        "entry_active": true,
+        "structured_checkpoint": true,
+        "test_player_and_chapter_match": true,
+        "turn_matches_public_run": true,
+        "action_matches_public_run": true,
+        "balance_matches_public_run": true,
+        "ledger_balances": true,
+        "story_present": true,
+        "story_matches_public_paragraphs_ignoring_whitespace": true
+      },
+      "healthy": true
+    },
+    {
+      "turn": 6,
+      "checked_at_utc": "2026-11-05T09:53:11.365345+00:00",
+      "http_status": 200,
+      "request_id": "aeef5b13a6650172",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 6
+        },
+        "entry_id": "mem_ent_98cb938804f449bf83ab5a26c2f03d0d",
+        "entry_version_id": "mem_ver_202520619d0c4295b3653bbd4a882aaa"
+      },
+      "entry_version": 1,
+      "state_turn": 6,
+      "expected_balance": 16,
+      "stored_balance": 16,
+      "earned": 20,
+      "spent": 49,
+      "closed": false,
+      "action_sha256_utf8": "ac34fabcd1459e056719f325fa7cde39219f98605db237510f0847b69cb2c8b8",
+      "story_sha256_utf8": "8aff03d4aa0db1bff06dce495fda9b8d5894c7835ba2ea71b7412008cd1af009",
+      "visible_story_paragraph_span_zero_based_half_open": [
+        1,
+        4
+      ],
+      "checks": {
+        "citation_matches_exactly": true,
+        "entry_active": true,
+        "structured_checkpoint": true,
+        "test_player_and_chapter_match": true,
+        "turn_matches_public_run": true,
+        "action_matches_public_run": true,
+        "balance_matches_public_run": true,
+        "ledger_balances": true,
+        "story_present": true,
+        "story_matches_public_paragraphs_ignoring_whitespace": true
+      },
+      "healthy": true
+    },
+    {
+      "turn": 7,
+      "checked_at_utc": "2026-11-05T09:53:11.386029+00:00",
+      "http_status": 200,
+      "request_id": "3ab03688eedcf7fe",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 7
+        },
+        "entry_id": "mem_ent_1e9feb5a1a924e9fa69fca5043758750",
+        "entry_version_id": "mem_ver_9784b0e97bb04ad4833b258e8b18defc"
+      },
+      "entry_version": 1,
+      "state_turn": 7,
+      "expected_balance": 16,
+      "stored_balance": 16,
+      "earned": 20,
+      "spent": 49,
+      "closed": true,
+      "action_sha256_utf8": "ee4dcbbceab48bd106fe2784aa35520ec7a14174edeb957a357d9596198e9ded",
+      "story_sha256_utf8": "32fa2a534e5f05f6f53a42e73d8f0546a745a8334c7f3352cc7c2eb5592162d8",
+      "visible_story_paragraph_span_zero_based_half_open": [
+        1,
+        4
+      ],
+      "checks": {
+        "citation_matches_exactly": true,
+        "entry_active": true,
+        "structured_checkpoint": true,
+        "test_player_and_chapter_match": true,
+        "turn_matches_public_run": true,
+        "action_matches_public_run": true,
+        "balance_matches_public_run": true,
+        "ledger_balances": true,
+        "story_present": true,
+        "story_matches_public_paragraphs_ignoring_whitespace": true
+      },
+      "healthy": true
+    }
+  ]
+}

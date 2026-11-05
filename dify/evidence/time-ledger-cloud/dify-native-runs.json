@@ -1,0 +1,335 @@
+{
+  "app_id": "e379a3f6-d769-46e5-84c5-ffe21fe53d36",
+  "workflow_id": "25855b9d-0b00-4f55-9b0e-be31344814a9",
+  "published_version": 5,
+  "timezone": "Asia/Shanghai",
+  "source": "Dify Cloud log details and node tracing, captured from published app runs",
+  "success_runs": [
+    {
+      "input": {
+        "player": "ledger-review-20261105",
+        "chapter": "station-whistle",
+        "action": "典当蓝色车站汽笛的记忆",
+        "app_id": "e379a3f6-d769-46e5-84c5-ffe21fe53d36",
+        "workflow_id": "25855b9d-0b00-4f55-9b0e-be31344814a9",
+        "workflow_run_id": "010ae17a-ec71-40fa-b2ab-0a98d8f2d21d",
+        "timestamp": 1793871908
+      },
+      "status": "状态 成功 运行时间 5.262s 总 TOKEN 数 977 Tokens",
+      "started_at_local": "2026-11-05 17:45:08",
+      "trace": [
+        {
+          "name": "进入倒走钟表旅店",
+          "duration": 0.101,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "派发存档码并按行动检索",
+          "duration": 63.458,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "POWERCONTEXT 读取当前状态与相关记忆",
+          "duration": 1.053,
+          "unit": "s",
+          "status": "succeeded"
+        },
+        {
+          "name": "结算账本、物品、怀表与房间规则",
+          "duration": 71.857,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "引导分支或继续剧情",
+          "duration": 0.095,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "掌柜叙事 977 tokens ·",
+          "duration": 3.327,
+          "unit": "s",
+          "status": "succeeded"
+        },
+        {
+          "name": "编码已结算状态和剧情",
+          "duration": 78.295,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "POWERCONTEXT 提交本轮账本",
+          "duration": 402.521,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "确认写入与引用",
+          "duration": 111.058,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "展示剧情、账本和存档码",
+          "duration": 0.087,
+          "unit": "ms",
+          "status": "succeeded"
+        }
+      ],
+      "recall": {
+        "status_code": 200,
+        "scope_id": "scp_13ra5sx885a67f3t9dx4cpf4d3",
+        "memory_status": "empty",
+        "latest_turn": null
+      },
+      "save": {
+        "status_code": 200,
+        "saved": true,
+        "scope_id": "scp_13ra5sx885a67f3t9dx4cpf4d3",
+        "citation": {
+          "memory_ref": {
+            "family": "memory",
+            "artifact_id": "memory",
+            "revision": 1
+          },
+          "entry_id": "mem_ent_0323d0e2470e4cdfaad5c955434ed150",
+          "entry_version_id": "mem_ver_34043e7e57fe4e14948a5401a50d3a0a"
+        }
+      }
+    },
+    {
+      "input": {
+        "player": "ledger-review-20261105",
+        "chapter": "station-whistle",
+        "action": "回忆蓝色车站汽笛",
+        "app_id": "e379a3f6-d769-46e5-84c5-ffe21fe53d36",
+        "workflow_id": "25855b9d-0b00-4f55-9b0e-be31344814a9",
+        "workflow_run_id": "6ac8b805-fc92-4116-a06a-8a72a7c16f83",
+        "timestamp": 1793871959
+      },
+      "status": "状态 成功 运行时间 5.118s 总 TOKEN 数 1418 Tokens",
+      "started_at_local": "2026-11-05 17:46:00",
+      "trace": [
+        {
+          "name": "进入倒走钟表旅店",
+          "duration": 0.106,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "派发存档码并按行动检索",
+          "duration": 78.75,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "POWERCONTEXT 读取当前状态与相关记忆",
+          "duration": 477.386,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "结算账本、物品、怀表与房间规则",
+          "duration": 64.375,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "引导分支或继续剧情",
+          "duration": 0.11,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "掌柜叙事 1.418K tokens ·",
+          "duration": 3.373,
+          "unit": "s",
+          "status": "succeeded"
+        },
+        {
+          "name": "编码已结算状态和剧情",
+          "duration": 80.383,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "POWERCONTEXT 提交本轮账本",
+          "duration": 498.416,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "确认写入与引用",
+          "duration": 345.021,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "展示剧情、账本和存档码",
+          "duration": 0.061,
+          "unit": "ms",
+          "status": "succeeded"
+        }
+      ],
+      "llm_node": {
+        "node": "掌柜叙事",
+        "token_label": "1.418K tokens",
+        "output_text_present": true
+      }
+    },
+    {
+      "input": {
+        "player": "ledger-review-20261105",
+        "chapter": "station-whistle",
+        "action": "结账离店",
+        "app_id": "e379a3f6-d769-46e5-84c5-ffe21fe53d36",
+        "workflow_id": "25855b9d-0b00-4f55-9b0e-be31344814a9",
+        "workflow_run_id": "c9f0df69-bf08-4a0b-b4c2-fe1dc0f1f867",
+        "timestamp": 1793872124
+      },
+      "status": "状态 成功 运行时间 4.710s 总 TOKEN 数 1910 Tokens",
+      "started_at_local": "2026-11-05 17:48:44",
+      "trace": [
+        {
+          "name": "进入倒走钟表旅店",
+          "duration": 0.093,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "派发存档码并按行动检索",
+          "duration": 145.585,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "POWERCONTEXT 读取当前状态与相关记忆",
+          "duration": 513.261,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "结算账本、物品、怀表与房间规则",
+          "duration": 76.779,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "引导分支或继续剧情",
+          "duration": 0.105,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "掌柜叙事 1.91K tokens ·",
+          "duration": 3.263,
+          "unit": "s",
+          "status": "succeeded"
+        },
+        {
+          "name": "编码已结算状态和剧情",
+          "duration": 58.993,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "POWERCONTEXT 提交本轮账本",
+          "duration": 439.78,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "确认写入与引用",
+          "duration": 65.633,
+          "unit": "ms",
+          "status": "succeeded"
+        },
+        {
+          "name": "展示剧情、账本和存档码",
+          "duration": 0.068,
+          "unit": "ms",
+          "status": "succeeded"
+        }
+      ],
+      "save": {
+        "status_code": 200,
+        "saved": true,
+        "scope_id": "scp_13ra5sx885a67f3t9dx4cpf4d3",
+        "citation": {
+          "memory_ref": {
+            "family": "memory",
+            "artifact_id": "memory",
+            "revision": 7
+          },
+          "entry_id": "mem_ent_1e9feb5a1a924e9fa69fca5043758750",
+          "entry_version_id": "mem_ver_9784b0e97bb04ad4833b258e8b18defc"
+        }
+      }
+    }
+  ],
+  "wrong_save_code": {
+    "input": {
+      "player": "ledger-review-20261105",
+      "chapter": "station-whistle",
+      "action": "回忆蓝色车站汽笛",
+      "app_id": "e379a3f6-d769-46e5-84c5-ffe21fe53d36",
+      "workflow_id": "25855b9d-0b00-4f55-9b0e-be31344814a9",
+      "workflow_run_id": "b9b44996-50b2-4db9-b697-59cd678d9f9b",
+      "timestamp": 1793872178
+    },
+    "status": "状态 成功 运行时间 1.303s 总 TOKEN 数 0 Tokens",
+    "started_at_local": "2026-11-05 17:49:38",
+    "trace": [
+      {
+        "name": "进入倒走钟表旅店",
+        "duration": 0.094,
+        "unit": "ms",
+        "status": "succeeded"
+      },
+      {
+        "name": "派发存档码并按行动检索",
+        "duration": 61.661,
+        "unit": "ms",
+        "status": "succeeded"
+      },
+      {
+        "name": "POWERCONTEXT 读取当前状态与相关记忆",
+        "duration": 1.023,
+        "unit": "s",
+        "status": "succeeded"
+      },
+      {
+        "name": "结算账本、物品、怀表与房间规则",
+        "duration": 89.37,
+        "unit": "ms",
+        "status": "succeeded"
+      },
+      {
+        "name": "引导分支或继续剧情",
+        "duration": 0.128,
+        "unit": "ms",
+        "status": "succeeded"
+      },
+      {
+        "name": "显示行动提示",
+        "duration": 0.052,
+        "unit": "ms",
+        "status": "succeeded"
+      }
+    ],
+    "recall": {
+      "status_code": 200,
+      "scope_id": "scp_6jy3dj4jwrsvj9deqvcf3rcf65",
+      "memory_status": "empty",
+      "latest_turn": null
+    }
+  },
+  "configured_llm": {
+    "provider": "langgenius/openai/openai",
+    "model": "gpt-4o-mini",
+    "configuration_source": "Published workflow canvas"
+  }
+}
