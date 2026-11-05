@@ -369,7 +369,17 @@ int ObDDLTaskUtil::generate_build_replica_sql(const int64_t data_table_id,
     ObArray<int64_t> select_column_ids;
     ObArray<int64_t> order_column_ids;
     bool is_shadow_column = false;
-    const int64_t real_parallelism = ObDDLTaskUtil::get_real_parallelism(parallelism);
+    int64_t real_parallelism = ObDDLTaskUtil::get_real_parallelism(parallelism);
+    // Populate vector auxiliary tables with the same rows and ID expressions,
+    // using up to eight configured CPU slots instead of the serial default.
+    // Respect builds that already requested more than one parallel worker.
+    // Reference: juanzhi-gcb/seekdb 5be047b (Apache-2.0).
+    if (real_parallelism == 1 &&
+        (dest_table_schema->is_vec_vid_rowkey_type() ||
+         dest_table_schema->is_vec_rowkey_vid_type() ||
+         dest_table_schema->is_vec_index_snapshot_data_type())) {
+      real_parallelism = std::min<int64_t>(8, std::max<int64_t>(1, GCONF.cpu_count));
+    }
     const bool is_rowkey_doc_aux_table = dest_table_schema->is_rowkey_doc_id();
     uint64_t doc_id_col_id = OB_INVALID_ID;
     uint64_t ft_id_col_id = OB_INVALID_ID;

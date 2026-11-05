@@ -1,4 +1,18 @@
-# AMD CAGRA single-copy snapshot candidate
+# AMD CAGRA parallel auxiliary scan candidate
+
+## Parallel scan experiment (2026-11-05)
+
+Parent: `amd-cagra-snapshot-2026` / `4c135dd0516f3ac4b22ffa75cc269dde916fc6bf`. User reports official `build=2.276x, query=2.779x, gates=pass`, score 16.48. The new candidate's score is unmeasured.
+
+Only the default normalized parallelism in `ObDDLTaskUtil::generate_build_replica_sql` changes. For vector VID-rowkey, rowkey-VID, and snapshot-data auxiliary schemas whose original parallelism is one, use `min(8, max(1, GCONF.cpu_count))` in the existing generated parallel-DML hint. Existing requests above one are preserved. An automatic/unspecified CPU count of zero remains one conservatively. Other schema types are unchanged. The projection, rowkey ordering, snapshot version, source rows, ID expressions and all other SQL text are untouched; this changes internal DDL scheduling, not evaluator inputs.
+
+The GPU bridge, graph/search parameters, worker and single-copy snapshot are byte-identical to the parent. More scan threads may change row processing order; runtime ID mapping, completeness, Recall, CPU-index functionality and resource limits must still pass. No independence between these effects is assumed. If no improvement or a gate fails, retain the parent and investigate without layering more changes.
+
+Reference: the auxiliary scan part of Apache-2.0 [juanzhi-gcb/seekdb 5be047b](https://github.com/juanzhi-gcb/seekdb/commit/5be047b07bd3011a76b04fd2b2f7c5b39ea9cc2a). This implementation additionally preserves builds already requesting multiple workers. Published reference gains do not establish this candidate's performance.
+
+Local checks: `python3 tools/hipvs_bridge/test_ddl_parallel.py` compiles the exact production selection block and checks 100 schema/CPU/request combinations with fake schema objects. Complete `ob_ddl_common_rs_impl.cpp` host syntax checks passed before/after the change using real V5 headers and dependency/build paths from a compatible macOS compile database. Apple Clang diagnostics for unnecessary-virtual-specifier, nontrivial-memcall, cast-function-type-mismatch and explicit-specialization-storage-class in unchanged V5 headers were disabled identically for both; evaluator flags are unchanged. This is not a Linux full build or a test of actual parallel SQL execution. Existing snapshot AddressSanitizer and worker ThreadSanitizer tests passed. Required model audit remains unavailable. The next acceptance is the formal platform build/Recall/GPU/query/resource check.
+
+## Historical snapshot experiment
 
 ## Snapshot experiment (2026-11-05)
 
