@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import argparse
 
 ROOT = Path(__file__).resolve().parents[2]
 PRE = r'''
@@ -75,7 +76,7 @@ static int load(void *key,int dim,const std::string &s) {
  return OB_ERR_UNEXPECTED;
 }
 int main() {
- int a,b;const size_t n=257;const int dim=5;
+ int a,b;const size_t n=10001;const int dim=128;
  std::vector<float> v(n*dim);std::vector<int64_t> ids(n);
  for(size_t i=0;i<v.size();++i)v[i]=float(i)*.125f;
  for(size_t i=0;i<n;++i)ids[i]=900000+int64_t(i)*7;
@@ -96,7 +97,9 @@ int main() {
  legacy.insert(header+n*sizeof(int64_t),reinterpret_cast<const char*>(v.data()),v.size()*sizeof(float));
  int copy_before=copies;assert(load(&a,dim,legacy)==0 && copies==copy_before);
  assert(g_ob_cuvs_reg[&a]->buf_vecs_==v);clear();
- for(size_t end: {size_t(0),size_t(7),header-1,header+n*sizeof(int64_t)-1,bytes.size()-1}) {
+ for(size_t end: {size_t(0),size_t(7),header-1,header+n*sizeof(int64_t)-1,
+                 header+n*sizeof(int64_t)+65536-1,
+                 header+n*sizeof(int64_t)+4*1024*1024-1,bytes.size()-1}) {
    assert(load(&a,dim,bytes.substr(0,end))!=0);assert(g_ob_cuvs_reg.empty()&&live==0);
  }
  assert(load(&a,dim+1,bytes)!=0&&live==0);
@@ -106,7 +109,11 @@ int main() {
 }
 '''
 
-source = (ROOT / 'src/oblib/lib/vector/ob_vsag_adaptor.cpp').read_text()
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--source-ref', help='Check an earlier committed source with the same format cases')
+args = parser.parse_args()
+source = (subprocess.check_output(['git','show',args.source_ref+':src/oblib/lib/vector/ob_vsag_adaptor.cpp'],cwd=ROOT).decode()
+          if args.source_ref else (ROOT / 'src/oblib/lib/vector/ob_vsag_adaptor.cpp').read_text())
 section = source[source.index('static const char OB_CUVS_SNAPSHOT_MAGIC'):source.index('}  // anonymous namespace')]
 assert 'memcmp(magic, OB_CUVS_SNAPSHOT_MAGIC_V2' in source
 with tempfile.TemporaryDirectory(prefix='seekdb-snapshot-test-') as tmp:

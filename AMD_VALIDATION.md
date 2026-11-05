@@ -1,4 +1,16 @@
-# AMD CAGRA parallel auxiliary scan candidate
+# AMD CAGRA larger snapshot-transfer-block candidate
+
+## Transfer block experiment (2026-11-05)
+
+Base: `amd-cagra-parallel-2026` / `924db86436e91344eef51d82fec0be1ded9066a5`, user-reported 19.67 points, `build=2.923x, query=2.703x, gates=pass`. The intervening memory-file experiment `a3186f01` scored 18.668 with build=2.702x/query=2.492x/pass in the user's report. This candidate is derived directly from the best parallel parent, not from that memory-file branch. Preserve the negative memfd result; one run does not prove its causal slowdown.
+
+Only the temporary-file/seekdb-stream copy block size changes from 64 KiB to 4 MiB for both serialization and reload. Allocate min(graph_bytes, 4 MiB), bounding additional temporary memory per operation to less than 4 MiB. For large snapshots, each host copy loop performs about 1/64 as many iterations; this is a call-count effect, not an asserted timing speedup. The original tmpfile staging remains. Serialized bytes, final persistence, first-query/timer boundaries, graph/search parameters, bridge, worker and DDL parallelism are unchanged.
+
+Validation: `python3 tools/hipvs_bridge/test_snapshot.py --source-ref 924db864` and `python3 tools/hipvs_bridge/test_snapshot.py` both passed under AddressSanitizer, using the actual host snapshot section with fake GPU calls. The test now uses 10001x128 FP32 (over 4 MiB) to exercise multiple large blocks, exact vector/ID recovery, the legacy reader, append/rebuild, truncation immediately before the 64 KiB and 4 MiB boundaries, and existing failure cleanup. The bridge accessor CPU tests also pass. Complete production adaptor source syntax passed with real project headers and the previously documented Apple Clang warning adjustment. Existing DDL policy and worker ThreadSanitizer checks passed.
+
+No Linux/ROCm full build, actual GPU timing/resource result or score exists for this candidate yet. Formal paired evaluation must preserve all gates and establish a gain over the parent before retaining the change. Required reviewer model unavailable; no independent review pass claimed.
+
+## Historical parallel scan experiment
 
 ## Parallel scan experiment (2026-11-05)
 
