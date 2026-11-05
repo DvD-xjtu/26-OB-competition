@@ -1,0 +1,81 @@
+{
+  "checked_at_utc": "2026-11-05T07:13:56.177037+00:00",
+  "player": "dify-review-20261105",
+  "chapter": "silver-rain-07",
+  "recall": {
+    "endpoint": "/recall",
+    "http_status": 200,
+    "memory_status": "ready",
+    "scope_id": "scp_5kv6t8j9vmxbdh93hp315arj9s"
+  },
+  "powercontext_exact_read": {
+    "endpoint": "/v1/memory/entries/get",
+    "http_status": 200,
+    "request_id": "b96ba9ec1f4858c6",
+    "scope_id": "scp_5kv6t8j9vmxbdh93hp315arj9s",
+    "citation": {
+      "memory_ref": {
+        "family": "memory",
+        "artifact_id": "memory",
+        "revision": 2
+      },
+      "entry_id": "mem_ent_a52ab3438218448f9dbee5859cee9aa6",
+      "entry_version_id": "mem_ver_8b11614785c245cd9a690e06bcccfb3b"
+    },
+    "entry_version": 1,
+    "entry_state": "active"
+  },
+  "qoder_model_call": {
+    "session_id": "51a9e83e-03f8-46db-9759-e6a00bcd6688",
+    "timestamp_utc": "2026-11-05T07:10:00.846Z",
+    "message_id": "073b5eba4ac4f8420d22a6361723892b",
+    "request_id": "28b2acb8-d2c4-485e-83c3-af361825db43",
+    "internal_model_label": "mmodel",
+    "stop_reason": "end_turn"
+  },
+  "qoder_input_history_checks": {
+    "prepared_item_count": 1,
+    "first_turn_matching_entry_count": 1,
+    "first_turn_citation_matches_exactly": true,
+    "first_turn_action_matches_exactly": true,
+    "keywords_in_first_turn_item": {
+      "银雨七号": true,
+      "雨声": true
+    }
+  },
+  "isolation_check": {
+    "chapter": "silver-rain-07-isolation",
+    "scope_id": "scp_2mw7e4hqvzyeev4tjm2tw1kdg6",
+    "http_status": 200,
+    "memory_status": "empty",
+    "scope_differs": true,
+    "history_empty": true,
+    "first_turn_entry_absent": true,
+    "first_turn_keywords_absent": true
+  },
+  "public_test_action": "我把刚才换来的物品放在柜台上。请说出它的刻字，以及我为它交出的记忆。然后请掌柜查看它指向哪里。",
+  "public_test_readback_story": "你把“银雨七号”搁上柜台，指腹一碰，便听见雨声从怀表深处倒退着响起。账簿第一页仍记着：你交出“星期二午后雨声”，换得这只倒走怀表；灰匣未曾打开，那段记忆仍由旅店保管，因而每过一刻便淡一分。掌柜俯身拨动表冠，针尖越过七号，反而转向门厅北墙——那里空着，只钉着一枚生锈的“七号房”牌。\n\n①沿指针去敲七号房：或许能找回收音，却要交出“记得自己姓名”的能力来开启门锁。  \n②当场拧回表冠：让怀表永远停在此刻，保住现有记忆，但灰匣中的星期二雨声将永远散失。  \n③自由行动：写下任何打算，我不会替你选择。",
+  "action_sha256_utf8": "b2bf50dbc2e919d75c89a07007eb3bacdd4a3f330392e3ca5d7b80e833fdce69",
+  "story_sha256_utf8": "ebc08c177033e0dcc1d53cddf8e897a376e839c85d6232cbde0d8914c354293d",
+  "checks": {
+    "citation_matches": true,
+    "entry_active": true,
+    "expected_action_matches": true,
+    "qoder_action_matches": true,
+    "qoder_story_exact_match": true,
+    "matching_qoder_calls": 1,
+    "scope_matches_first_turn": true,
+    "keywords_absent_from_action": {
+      "银雨七号": true,
+      "雨声": true
+    },
+    "keywords_in_readback_story": {
+      "银雨七号": true,
+      "雨声": true
+    },
+    "timing_terms_in_readback_story": {
+      "星期二": true,
+      "午后": true
+    }
+  }
+}

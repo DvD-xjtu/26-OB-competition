@@ -7,7 +7,7 @@
 | MiniMax | `minimax/README.md`、`minimax/evidence/seekdb-conditional-run1/` | 实际 seekdb 模块；真实 MiniMax 修改；原12项及新增5项测试通过；PowerContext 新进程读回；重新导入更新验证 |
 | Qoder | `qoder/README.md`、`qoder/DEVELOPMENT.md`、`qoder/evidence/` | 实际 Qoder CLI 开发记录；21单测、真实 PowerContext 集成、13项端到端与离线检查；公开展示页 |
 | StepFun | `stepfun/README.md`、`stepfun/REPORT.md`、`stepfun/evidence/` | 浏览器真实本地模型；seekdb 数据库内混合检索；FP32/INT8、WebGPU/WASM、批量与逐条、缓存加载、质量与延迟原始记录 |
-| Dify | `dify/clockwork-inn.yml`、`dify/README.md`、`dify/evidence/` | Dify Cloud 导入，两轮真实模型剧情和记忆存档；新进程读回、玩家隔离；已发布版本1 |
+| Dify | [完整 DSL](dify/clockwork-inn.yml)、[初始化与双轮体验](dify/README.md)、[原生运行证据](dify/evidence/dify-cloud-runs/README.md) | Dify 承担读取、生成、存档和输出主流程，集成真实 PowerContext；两轮输入输出与引擎执行记录见证据索引；历史新进程读回与隔离测试另行保留 |
 | ModelScope | `modelscope/contest-evidence-check/`、ZIP、`modelscope/PUBLICATION.md` | Skill 校验、脚本实际执行；公开发布，手动同步后核验两个文件 |
 
 ## 演示链接
@@ -22,8 +22,10 @@
 
 对于显示 Commit/Branch 的提测表单，填写本仓库、上述分支及远端完整 commit。**ModelScope 例外：不克隆仓库，不填 Commit/Branch，只填写公开作品页面链接；SKILL.md 正文末尾必须包含平台读取的本队完整验证行。** 按实际表单添加对应目录说明与链接。Qoder 账号 UID 属于账号信息：CLI 登录状态不返回 UID，不要把 session_id/projectId 当作 UID；如表单要求，使用账号个人资料中的实际 UID。开发过程采用真实脱敏记录，未上传原始私有思考或密钥。
 
-Dify 演示后端当前位于本机，通过临时 HTTPS 隧道服务云端；本机关闭或隧道退出后需重新启动并更新桥接地址。Qoder 在线链接是项目展示页，完整交互应用按 README 启动。StepFun 是本机应用，评审可按 README 重现。
+Dify 提交资产均以本分支的 `dify/` 为入口，使用赛题允许的 PowerContext 集成路线。[README](dify/README.md) 提供依赖安装、持久化服务初始化、DSL 导入和发布步骤，以及相同玩家/存档下“首轮交易 → 次轮回忆”的可复现体验。评审先查看 [Dify 原生双轮运行证据](dify/evidence/dify-cloud-runs/README.md)，再按发布应用或源码复验；复验应选择未使用的玩家标识和存档名。旧 `powercontext-integration.json` 仅为 synthetic 文本存储测试，旧 `cloud-workflow-recovery.json` 仅为外部新进程读回与隔离证据，均不替代 Dify 引擎运行记录。
 
-尚未获得平台评分，不能承诺满分。StepFun 仅6文档冒烟质量集且 INT8 WebGPU 排序有下降；Dify 开放式叙事样例存在措辞矛盾，均在材料中如实记录。截图/录屏及账号 UID 可在手动提测时从实际运行页面补充。
+Dify 演示后端当前位于本机，通过临时 HTTPS 隧道服务云端；本机关闭或隧道退出后需重新启动并更新桥接地址、重新发布工作流。Qoder 在线链接是项目展示页，完整交互应用按 README 启动。StepFun 是本机应用，评审可按 README 重现。
+
+各题成绩以平台实际评审为准，不能承诺满分。StepFun 仅6文档冒烟质量集且 INT8 WebGPU 排序有下降。Dify 历史开放式叙事样例的措辞矛盾保留在 `dify/evidence/cloud-run-notes.md`；本次双轮运行的具体输入输出及截图/日志以原生证据索引为准。
 
 AMD 按用户要求暂不继续；已有独立分支 `amd-cagra-v5-opt` 保留，不作为这五题的提交分支，也不声称已完成 GPU 性能验证。

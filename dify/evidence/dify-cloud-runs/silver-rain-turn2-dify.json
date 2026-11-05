@@ -1,0 +1,125 @@
+{
+  "input": {
+    "player": "dify-review-20261105",
+    "chapter": "silver-rain-07",
+    "action": "我把刚才换来的物品放在柜台上。请说出它的刻字，以及我为它交出的记忆。然后请掌柜查看它指向哪里。",
+    "sys.app_id": "e379a3f6-d769-46e5-84c5-ffe21fe53d36",
+    "sys.timestamp": 1793862572,
+    "sys.workflow_id": "a823f515-9e26-42db-8cc9-7cd12182efab",
+    "sys.workflow_run_id": "b78d768e-da0f-41bd-80b3-d07343af95c7"
+  },
+  "status": "状态 成功 运行时间 37.725s 总 TOKEN 数 0 Tokens",
+  "start": "2026-11-05 15:09:32",
+  "nodes": [
+    {
+      "name": "进入倒走钟表旅店",
+      "duration": 0.099,
+      "unit": "ms",
+      "status": "succeeded"
+    },
+    {
+      "name": "编码请求",
+      "duration": 186.274,
+      "unit": "ms",
+      "status": "succeeded"
+    },
+    {
+      "name": "POWERCONTEXT 读取历史",
+      "duration": 597.949,
+      "unit": "ms",
+      "status": "succeeded"
+    },
+    {
+      "name": "组装历史与行动",
+      "duration": 371.254,
+      "unit": "ms",
+      "status": "succeeded"
+    },
+    {
+      "name": "生成有记忆的剧情",
+      "duration": 35.706,
+      "unit": "s",
+      "status": "succeeded"
+    },
+    {
+      "name": "编码剧情存档",
+      "duration": 58.147,
+      "unit": "ms",
+      "status": "succeeded"
+    },
+    {
+      "name": "POWERCONTEXT 保存后果",
+      "duration": 621.351,
+      "unit": "ms",
+      "status": "succeeded"
+    },
+    {
+      "name": "确认存档成功",
+      "duration": 65.147,
+      "unit": "ms",
+      "status": "succeeded"
+    },
+    {
+      "name": "展示剧情与来源",
+      "duration": 0.097,
+      "unit": "ms",
+      "status": "succeeded"
+    }
+  ],
+  "http": {
+    "recall": {
+      "status_code": 200,
+      "scope_id": "scp_5kv6t8j9vmxbdh93hp315arj9s",
+      "memory_status": "ready",
+      "history_empty": false,
+      "contains_turn1_entry": true,
+      "contains_turn1_mark": true,
+      "contains_turn1_cost": true
+    },
+    "narrate": {
+      "status_code": 200,
+      "model": "MiniMax-M3.1-Flash",
+      "response_id": "51a9e83e-03f8-46db-9759-e6a00bcd6688",
+      "contains_mark": true,
+      "contains_cost": true
+    },
+    "save": {
+      "status_code": 200,
+      "saved": true,
+      "scope_id": "scp_5kv6t8j9vmxbdh93hp315arj9s",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 2
+        },
+        "entry_id": "mem_ent_a52ab3438218448f9dbee5859cee9aa6",
+        "entry_version_id": "mem_ver_8b11614785c245cd9a690e06bcccfb3b"
+      }
+    }
+  },
+  "public": {
+    "citation": {
+      "memory_ref": {
+        "family": "memory",
+        "artifact_id": "memory",
+        "revision": 2
+      },
+      "entry_id": "mem_ent_a52ab3438218448f9dbee5859cee9aa6",
+      "entry_version_id": "mem_ver_8b11614785c245cd9a690e06bcccfb3b"
+    },
+    "visible_output": [
+      "你把“银雨七号”搁上柜台，指腹一碰，便听见雨声从怀表深处倒退着响起。账簿第一页仍记着：你交出“星期二午后雨声”，换得这只倒走怀表；灰匣未曾打开，那段记忆仍由旅店保管，因而每过一刻便淡一分。掌柜俯身拨动表冠，针尖越过七号，反而转向门厅北墙——那里空着，只钉着一枚生锈的“七号房”牌。",
+      "①沿指针去敲七号房：或许能找回收音，却要交出“记得自己姓名”的能力来开启门锁。",
+      "②当场拧回表冠：让怀表永远停在此刻，保住现有记忆，但灰匣中的星期二雨声将永远散失。",
+      "③自由行动：写下任何打算，我不会替你选择。"
+    ]
+  },
+  "source": {
+    "engine": "Dify Cloud",
+    "log_page": "https://cloud.dify.ai/app/e379a3f6-d769-46e5-84c5-ffe21fe53d36/logs",
+    "public_app": "https://udify.app/workflow/WQb80SuLOoL9dWU3",
+    "started_at_timezone": "Asia/Shanghai",
+    "capture": "Allowlisted fields from the visible Dify console details and tracing panels and the public result. The console editor adds line wrapping. The action is the exact public form input."
+  }
+}
