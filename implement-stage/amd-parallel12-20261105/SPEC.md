@@ -1,0 +1,3 @@
+# Twelve-way vector auxiliary scan candidate
+
+Base 2559231ada6be1b5e181669366bf52ac2a64bb6e: user reports official 19.808/build=2.955x/query=2.724x/gates=pass. Change only vector auxiliary serial-default scan parallelism cap from 8 to 12, bounded by configured CPU count. Preserve existing requests above one, nonvector paths, SQL row/ID/order/snapshot expressions, 4 MiB blocks, worker and GPU settings. No memfd. Hypothesis: available CPU parallelism reduces remaining scan latency; not a guaranteed score increase. Verify whole-source host syntax, CPU policy boundaries, unchanged GPU code and existing regressions. Real Linux/ROCm build, parallel SQL correctness, memory and formal score require platform.

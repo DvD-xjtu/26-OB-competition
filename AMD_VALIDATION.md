@@ -1,4 +1,16 @@
-# AMD CAGRA larger snapshot-transfer-block candidate
+# AMD CAGRA twelve-way auxiliary scan candidate
+
+## Parallelism cap experiment (2026-11-05)
+
+Base: `amd-cagra-chunks-2026` / `2559231ada6be1b5e181669366bf52ac2a64bb6e`. The user reports official 19.808 points, `build=2.955x, query=2.724x, gates=pass`. Preserve that branch. The older memfd candidate remains rejected and is absent from this lineage. The new candidate has no official result yet.
+
+The only production behavior change is the auxiliary scan parallelism cap from 8 to 12 in `ObDDLTaskUtil::generate_build_replica_sql`. The same three vector auxiliary schema types qualify, only when normalized parallelism is one. The actual value remains bounded by configured CPU count; zero stays one, and existing requests above one are preserved. Source rows, ID expressions and all other generated SQL remain unchanged. The GPU bridge, graph/search settings, worker, single-copy snapshot, 4 MiB transfer blocks and measurement boundaries are unchanged.
+
+Hypothesis: more auxiliary scan workers can reduce remaining DDL latency. This does not alter GPU graph construction or replace GPU work with CPU computation. More workers may instead increase scheduling overhead and memory pressure. The cap is not a limit on all process threads; the existing PX scheduler still governs execution. Actual parallel SQL correctness, ID mapping, Recall, CPU-index functionality and resource gates require platform validation. One small score change does not establish a stable improvement beyond round-to-round variance.
+
+Local checks passed: complete DDL source host syntax with real project headers (using the same four documented Apple Clang diagnostic suppressions as the parent), 160 production policy boundary cases, snapshot AddressSanitizer roundtrip/error/bridge-accessor checks, worker ThreadSanitizer with 4,000 contended jobs, and whitespace checks. These are host checks with explicit fake GPU operations where documented, not a full Linux/ROCm build or GPU timing. The required independent reviewer model is unavailable; no independent review pass is claimed. Next: submit this exact candidate once, compare with the preserved 19.808-point parent, and retain only if all gates pass and the measured result supports it.
+
+## Historical transfer-block experiment
 
 ## Transfer block experiment (2026-11-05)
 

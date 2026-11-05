@@ -29,16 +29,16 @@ post = r'''
 int main(){
  for(int type=0;type<5;++type){
   Schema schema{type};
-  for(int64_t cpu: {int64_t(0),int64_t(1),int64_t(2),int64_t(8),int64_t(24)}){
+  for(int64_t cpu: {int64_t(0),int64_t(1),int64_t(2),int64_t(8),int64_t(11),int64_t(12),int64_t(13),int64_t(24)}){
    GCONF.cpu_count=cpu;
    for(int64_t request: {int64_t(0),int64_t(1),int64_t(2),int64_t(16)}){
     auto expected=std::max<int64_t>(1,request);
-    if(type>=1&&type<=3&&expected==1)expected=std::min<int64_t>(8,std::max<int64_t>(1,cpu));
+    if(type>=1&&type<=3&&expected==1)expected=std::min<int64_t>(12,std::max<int64_t>(1,cpu));
     assert(select(request,&schema)==expected);
    }
   }
  }
- puts("PASS: 100 policy cases covering three vector types, nonvector types, CPU limits and existing parallelism");
+ puts("PASS: 160 policy cases covering three vector types, nonvector types, CPU limits and existing parallelism");
 }
 '''
 with tempfile.TemporaryDirectory(prefix='seekdb-parallel-test-') as tmp:

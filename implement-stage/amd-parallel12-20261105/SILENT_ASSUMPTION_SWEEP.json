@@ -1,0 +1,8 @@
+{
+  "status": "unavailable",
+  "required_model": "gpt-5.6-sol",
+  "reason": "Required model is not available in the current tool inventory.",
+  "independent_review_pass": false,
+  "manual_scope_check": "One production constant and its comment; preserve explicit parallelism, CPU bound, SQL semantics and parent GPU/snapshot/worker code.",
+  "unverified": ["Linux/ROCm full build", "Actual parallel SQL correctness and ID mapping", "GPU Recall and resource gates", "Official performance"]
+}
