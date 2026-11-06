@@ -69,23 +69,18 @@ def main(player, chapter, action, recall_json, recall_status, resume):
     return play_turn(player.strip(), chapter.strip(), action.strip(), recall_json)
 """.rstrip()
 
-ENCODE_SAVE = """
-import json
+ENCODE_SAVE = (HERE / "narrative.py").read_text(encoding="utf-8") + """
 
-def excerpt(text, limit):
-    return text.encode()[:limit].decode(errors="ignore")
-
-def main(player, chapter, action, story, state_json):
-    story = story.strip()
-    if not story:
-        raise ValueError("掌柜没有返回剧情，本次未写入存档。")
-    # The LLM contributes prose. The rule node is the only source of state.
-    return {"body": json.dumps(
-        {"player": player, "chapter": chapter, "action": excerpt(action.strip(), 900),
-         "story": excerpt(story, 2500), "state": json.loads(state_json)},
-        ensure_ascii=False,
-    )}
+def main(player, chapter, action, story, state_json, turn_prompt):
+    rendered = render_story(story, turn_prompt, state_json)
+    body = {"player": player, "chapter": chapter, "action": action.strip(),
+            "story": rendered["story"], "state": json.loads(state_json)}
+    # PowerContext adds its envelope. Bound the complete body, never truncate prose.
+    if len(json.dumps(body, ensure_ascii=False).encode("utf-8")) > 7500:
+        raise ValueError("存档超过容量，本轮尚未保存，请使用较短的记忆名称。")
+    return {"body": json.dumps(body, ensure_ascii=False), "audit": rendered["audit"]}
 """.strip()
+
 
 RESULT = """
 import json
@@ -197,9 +192,9 @@ node("route", "if-else", "引导分支或继续剧情", {"cases": [{
     }],
 }]}, 4)
 end("help", "显示行动提示", {"guide": ["rules", "rules_text"]}, 5, -1)
-node("narrate", "llm", "掌柜叙事", {
+node("narrate", "llm", "掌柜选择场景与前情", {
     "model": {"provider": MODEL_PROVIDER, "name": MODEL_NAME, "mode": "chat",
-              "completion_params": {"temperature": 0.4, "max_tokens": 600}},
+              "completion_params": {"temperature": 0.2, "max_tokens": 180}},
     "prompt_template": [
         {"role": "system", "text": "{{#rules.system_prompt#}}"},
         {"role": "user", "text": "{{#rules.turn_prompt#}}"},
@@ -208,11 +203,11 @@ node("narrate", "llm", "掌柜叙事", {
     "vision": {"enabled": False},
     "variables": [],
 }, 5)
-code("encode_save", "编码已结算状态和剧情", {
+code("encode_save", "校验模型计划并渲染已结算剧情", {
     "player": ["prepare", "storage_player"], "chapter": ["prepare", "storage_chapter"],
     "action": ["start", "action"], "story": ["narrate", "text"],
-    "state_json": ["rules", "state_json"],
-}, ENCODE_SAVE, ["body"], 6)
+    "state_json": ["rules", "state_json"], "turn_prompt": ["rules", "turn_prompt"],
+}, ENCODE_SAVE, ["body", "audit"], 6)
 http("save", "PowerContext 提交本轮账本", "remember", "encode_save", 7)
 code("result", "确认写入与引用", {
     "response": ["save", "body"], "status": ["save", "status_code"],

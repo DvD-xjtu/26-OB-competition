@@ -1,0 +1,62 @@
+Browser tab: 36, Title: "Dify", URL: "https://cloud.dify.ai/app/e379a3f6-d769-46e5-84c5-ffe21fe53d36/logs".
+0 AXWebArea Dify, URL: cloud.dify.ai/app/e379a3f6-d769-46e5-84c5-ffe21fe53d36/logs
+	1 container
+		202 container
+			203 text 升级即可无限期保留升级后生成的日志；此前已过期的日志无法恢复。
+			204 button 升级
+				205 text 升级
+		201 container Notifications
+		206 container
+			207 button 关闭
+			208 heading 日志详情, Value: 1
+				209 text 日志详情
+			210 button Description: 按此参数测试, ID: base-ui-_r_7i_
+			211 tab group
+				212 tab (selectable, settable, boolean) 结果, Value: 0, ID: base-ui-_r_7j_
+				213 tab (selectable, settable, boolean) 详情, Value: 0, ID: base-ui-_r_7k_
+				214 tab (selected, settable, boolean) 追踪, Value: 1, ID: base-ui-_r_7l_
+			215 container Description: 追踪, ID: base-ui-_r_7o_
+				216 container
+					217 button (collapsed) 进入倒走钟表旅店 0.100 ms 成功, ID: base-ui-_r_83_, Secondary Actions: Expand
+						218 text 进入倒走钟表旅店
+						219 text 0.100 ms
+						220 text 成功
+					221 button (collapsed) 派发存档码并按行动检索 60.752 ms 成功, ID: base-ui-_r_86_, Secondary Actions: Expand
+						222 text 派发存档码并按行动检索
+						223 text 60.752 ms
+						224 text 成功
+					225 button (collapsed) POWERCONTEXT 读取当前状态与相关记忆 586.760 ms 成功, ID: base-ui-_r_89_, Secondary Actions: Expand
+						226 text POWERCONTEXT 读取当前状态与相关记忆
+						227 text 586.760 ms
+						228 text 成功
+					229 button (collapsed) 结算账本、物品、怀表与房间规则 123.094 ms 成功, ID: base-ui-_r_8c_, Secondary Actions: Expand
+						230 text 结算账本、物品、怀表与房间规则
+						231 text 123.094 ms
+						232 text 成功
+					233 button (collapsed) 引导分支或继续剧情 0.117 ms 成功, ID: base-ui-_r_8f_, Secondary Actions: Expand
+						234 text 引导分支或继续剧情
+						235 text 0.117 ms
+						236 text 成功
+					237 button (collapsed) 掌柜选择场景与前情 2.199K tokens · 1.332 s 成功, ID: base-ui-_r_8i_, Secondary Actions: Expand
+						238 text 掌柜选择场景与前情
+						239 container
+							240 text 2.199K tokens ·  1.332 s
+						241 text 成功
+					242 button (collapsed) 校验模型计划并渲染已结算剧情 163.726 ms 成功, ID: base-ui-_r_8l_, Secondary Actions: Expand
+						243 text 校验模型计划并渲染已结算剧情
+						244 text 163.726 ms
+						245 text 成功
+					246 button (collapsed) POWERCONTEXT 提交本轮账本 449.771 ms 成功, ID: base-ui-_r_8o_, Secondary Actions: Expand
+						247 text POWERCONTEXT 提交本轮账本
+						248 text 449.771 ms
+						249 text 成功
+					250 button (collapsed) 确认写入与引用 77.524 ms 成功, ID: base-ui-_r_8r_, Secondary Actions: Expand
+						251 text 确认写入与引用
+						252 text 77.524 ms
+						253 text 成功
+					254 button (collapsed) 展示剧情、账本和存档码 0.066 ms 成功, ID: base-ui-_r_8u_, Secondary Actions: Expand
+						255 text 展示剧情、账本和存档码
+						256 text 0.066 ms
+						257 text 成功
+
+The focused UI element is 214 tab (selected, settable, boolean) 追踪, Value: 1, ID: base-ui-_r_7l_

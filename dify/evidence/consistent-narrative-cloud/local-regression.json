@@ -1,0 +1,116 @@
+{
+  "command": ".pcvenv/Scripts/python.exe -B -m unittest discover -s ecosystem/dify -p test_narrative_consistency.py -v",
+  "working_directory": "workspace root",
+  "started_at_utc": "2026-11-06T02:50:43.858788+00:00",
+  "completed_at_utc": "2026-11-06T02:50:44.366446+00:00",
+  "tests": 24,
+  "passed": true,
+  "passed_tests": 24,
+  "exit_code": 0,
+  "duration_seconds": 0.08,
+  "boundary": "local synthetic, not native run",
+  "test_results": [
+    {
+      "name": "test_buying_owned_key_does_not_charge_or_duplicate_it",
+      "status": "ok"
+    },
+    {
+      "name": "test_corrupt_checkpoint_cannot_be_covered_by_correct_sounding_story",
+      "status": "ok"
+    },
+    {
+      "name": "test_current_room_choices_advertise_the_actual_free_revisit",
+      "status": "ok"
+    },
+    {
+      "name": "test_ended_save_rejects_new_room_or_trade_without_resource_changes",
+      "status": "ok"
+    },
+    {
+      "name": "test_insufficient_balance_rejects_a_room_without_partial_spending",
+      "status": "ok"
+    },
+    {
+      "name": "test_locked_room_without_key_does_not_charge_or_grant_its_gift",
+      "status": "ok"
+    },
+    {
+      "name": "test_old_false_prose_cannot_repledge_the_authoritative_memory",
+      "status": "ok"
+    },
+    {
+      "name": "test_redeemed_memory_cannot_be_charged_redemption_twice",
+      "status": "ok"
+    },
+    {
+      "name": "test_redeemed_memory_is_not_advertised_as_requiring_another_redemption",
+      "status": "ok"
+    },
+    {
+      "name": "test_same_pledged_memory_cannot_generate_duplicate_income",
+      "status": "ok"
+    },
+    {
+      "name": "test_same_room_free_inspection_never_duplicates_its_first_visit_gift",
+      "status": "ok"
+    },
+    {
+      "name": "test_seven_turn_state_survives_json_round_trips",
+      "status": "ok"
+    },
+    {
+      "name": "test_ended_save_cannot_gain_actions_through_the_model",
+      "status": "ok"
+    },
+    {
+      "name": "test_false_facts_and_prompt_instructions_cannot_be_smuggled_into_a_valid_plan",
+      "status": "ok"
+    },
+    {
+      "name": "test_invented_cost_or_outcome_in_prompt_cannot_become_story",
+      "status": "ok"
+    },
+    {
+      "name": "test_long_memory_names_eventually_fail_closed_without_losing_the_previous_save",
+      "status": "ok"
+    },
+    {
+      "name": "test_mixed_ownership_is_rendered_per_memory",
+      "status": "ok"
+    },
+    {
+      "name": "test_model_choices_affect_scene_without_changing_game_facts",
+      "status": "ok"
+    },
+    {
+      "name": "test_native_llm_output_flows_through_the_tested_code_node",
+      "status": "ok"
+    },
+    {
+      "name": "test_original_scored_failure_is_rejected_before_any_save_body_exists",
+      "status": "ok"
+    },
+    {
+      "name": "test_persisted_bad_old_prose_is_not_reintroduced_by_callback",
+      "status": "ok"
+    },
+    {
+      "name": "test_prompt_state_mismatch_cannot_render_or_persist_stale_facts",
+      "status": "ok"
+    },
+    {
+      "name": "test_seven_rounds_persist_exact_guarded_story_and_authoritative_state",
+      "status": "ok"
+    },
+    {
+      "name": "test_structured_plan_indices_and_types_fail_closed",
+      "status": "ok"
+    }
+  ],
+  "source_sha256": {
+    "game_rules.py": "a848bbd366ae54ba79225aaa71ea6136af35cef587d31ceb4ed49d8a25e1c771",
+    "narrative.py": "41650c63a543739c8b6cdae964654662c2e6653489c41cdb69f0e1dd632bfcd8",
+    "build_dsl.py": "ec29a02ec4d16f5d2a55ff0bea509612f95ce363ea6481c8630ec644c9f36c26",
+    "test_narrative_consistency.py": "90ed5910cfee548dd7ed6d5f0ac64fe9aa28834cfe769b9decf44ed12a96c934"
+  }
+}

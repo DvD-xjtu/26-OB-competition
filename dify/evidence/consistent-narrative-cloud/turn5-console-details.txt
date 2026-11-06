@@ -1,0 +1,299 @@
+- link:
+  - /url: "#main-content"
+  - text: 跳转到主要内容
+- navigation:
+  - list:
+    - link:
+      - /url: /
+    - listitem: /
+    - link:
+      - /url: /apps
+      - text: 工作室
+- button
+- button
+- generic: 🕰️
+- generic: 倒走钟表旅店 · 时间账本
+- button
+- generic: 工作流
+- navigation:
+  - link:
+    - /url: /app/e379a3f6-d769-46e5-84c5-ffe21fe53d36/workflow
+    - generic: 编排
+  - link:
+    - /url: /app/e379a3f6-d769-46e5-84c5-ffe21fe53d36/access-point
+    - generic: 访问入口
+  - separator
+  - link:
+    - /url: /app/e379a3f6-d769-46e5-84c5-ffe21fe53d36/logs
+    - generic: 日志
+  - separator
+  - link:
+    - /url: /app/e379a3f6-d769-46e5-84c5-ffe21fe53d36/overview
+    - generic: 监测
+- button:
+  - generic: D
+  - generic: Dify
+  - generic: 账户
+- button
+- main:
+  - heading [level=1]: 日志
+  - paragraph: 日志记录了应用的执行情况
+  - combobox:
+    - generic: 全部
+  - button
+  - textbox: all
+  - combobox:
+    - generic: 过去 7 天
+  - button
+  - textbox: "2"
+  - searchbox
+  - status:
+    - paragraph: 升级即可无限期保留升级后生成的日志；此前已过期的日志无法恢复。
+    - button "升级":
+      - generic: 升级
+  - table:
+    - rowgroup:
+      - row:
+        - cell
+        - columnheader:
+          - button:
+            - text: 开始时间
+        - columnheader: 状态
+        - columnheader: 运行时间
+        - columnheader: TOKENS
+        - columnheader: 用户或账户
+        - columnheader: 触发方式
+    - rowgroup:
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:45:26
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 4.038s
+        - cell: "1929"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:42:46
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 3.339s
+        - cell: "2333"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:41:02
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 3.568s
+        - cell: "2119"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button [expanded]: 2026-11-06 10:40:42
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 2.987s
+        - cell: "2199"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:40:06
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 3.030s
+        - cell: "1598"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:39:47
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 3.238s
+        - cell: "1450"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:38:58
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 4.147s
+        - cell: "1292"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:37:16
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 3.058s
+        - cell: "867"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:17:44
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 6.942s
+        - cell: "2391"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 09:47:39
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 5.708s
+        - cell: "2364"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+  - navigation:
+    - button [disabled]
+    - button:
+      - generic: "1"
+      - generic: /
+      - generic: "8"
+    - button
+    - list:
+      - button: "1"
+      - button: "2"
+      - button: "3"
+      - button: "4"
+      - button: "5"
+      - generic: …
+      - button: "8"
+    - generic: 每页显示
+    - radiogroup:
+      - radio [checked]: "10"
+      - radio [checked]
+      - radio: "25"
+      - radio
+      - radio: "50"
+      - radio
+- alert
+- region "Notifications"
+- dialog:
+  - button "关闭":
+  - heading "日志详情" [level=1]
+  - button "按此参数测试":
+  - tablist:
+    - tab "结果"
+    - tab "详情" [selected]
+    - tab "追踪"
+  - tabpanel "详情":
+    - status:
+      - generic: 状态
+      - generic: 成功
+      - generic: 运行时间
+      - generic: 2.987s
+      - generic: 总 token 数
+      - generic: 2199 Tokens
+    - generic: 输入
+    - button "复制"
+    - button "折叠" [active]
+    - code:
+      - generic: 
+      - generic: "1"
+      - generic: "2"
+      - generic: "3"
+      - generic: "4"
+      - generic: "5"
+      - generic: "6"
+      - generic: "7"
+      - generic: "8"
+      - generic: "9"
+      - generic: "10"
+      - generic: "11"
+      - generic: "12"
+      - generic: "{"
+      - generic: "\"player\": \"ledger-guard-20261106\","
+      - generic: "\"chapter\": \"station-whistle-v3\","
+      - generic: "\"save_code\": \"[REDACTED]\","
+      - generic: "\"action\": \"赎回蓝色车站汽笛\","
+      - generic: "\"sys.files\": [],"
+      - generic: "\"sys.user_id\": \"63059c42-2854-4e73-b5fb-5a6162eca10c\","
+      - generic: "\"sys.app_id\": \"e379a3f6-d769-46e5-84c5-ffe21fe53d36\","
+      - generic: "\"sys.timestamp\": 1793932842,"
+      - generic: "\"sys.workflow_id\": \"29c1d125-27d3-49af-b353-24597a9b53ff\","
+      - generic: "\"sys.workflow_run_id\": \"29b251aa-8898-4378-8739-2f943606ed83\""
+      - generic: "}"
+      - textbox "Editor content"
+    - generic: 输出
+    - button "复制"
+    - button "展开"
+    - code:
+      - generic: 
+      - generic: "1"
+      - generic: "2"
+      - generic: "{"
+      - generic: "\"story\": \"账页上的墨色深浅相间，纸的纹路仿佛一条通向昨天的小路。那些"
+      - generic: 装饰钟的指针沿逆时针方向行进，怀表则只按实际消费倒走。\n\n翻阅第 4
+      - generic: 轮账页，当时的记录是：\"支付 12 分钟进入旧信室。信中没有替你决定收件
+      - generic: 人，信封上的邮戳正在向昨天倒退。首次来访，取得“未寄出的信”；再次进入
+      - generic: 不会重复获得。\"。那是过去的记录；现在的结果与归属以下文为准。\n\n本
+      - generic: 轮结算：支付 25 分钟，赎回“蓝色车站汽笛”。这段记忆可以再次回忆。\n\n
+      - generic: 此刻你在旧信室，余额 18 分钟，怀表 11:13。\n\n现在归你持有的记忆：
+      - generic: \"蓝色车站汽笛\"；它们不在抵押柜中，无需再付赎回费。今后主动回忆每次
+      - textbox "Editor content"
+    - button "调整编辑器尺寸"
+    - generic: 高度：172 像素 使用上下方向键调整高度，按住 Shift 加速。Home 或 Enter 恢复最小高度。
+    - generic: 元数据
+    - term: 状态
+    - definition: 成功
+    - term: 执行人
+    - definition: 63059c42-2854-4e73-b5fb-5a6162eca10c
+    - term: 开始时间
+    - definition: 2026-11-06 10:40:42
+    - term: 运行时间
+    - definition: 2.987s
+    - term: 总 token 数
+    - definition: 2199 Tokens
+    - term: 运行步数
+    - definition: "10"

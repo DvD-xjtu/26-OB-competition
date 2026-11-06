@@ -1,18 +1,24 @@
-# 倒走钟表旅店 · 时间账本（V2）
+# 倒走钟表旅店 · 时间账本与受约束叙事
 
-时间是旅店的货币。你可以典当一段自己命名的记忆、购买钥匙、探索房间，也可以花时间赎回记忆后离店。余额、怀表、物品、抵押状态和结局由 Dify 原生 Code 节点结算，原生 LLM 节点只依据结算结果描写场景。
+时间是旅店的货币。你可以典当一段自己命名的记忆、购买钥匙、探索房间，也可以花时间赎回记忆后离店。余额、怀表、物品、抵押状态和结局由 Dify 原生 Code 节点结算。修订方案保留原生 LLM 的真实调用，让模型选择受约束的场景计划，再由 Code 校验并渲染最终剧情。
 
-时间账本已发布为原 Dify 应用的第 5 版。公开七轮账本、原生 LLM 与条件分支记录、以及 PowerContext 精确读回见 [时间账本云端运行记录](evidence/time-ledger-cloud/README.md)。[打开公开应用](https://udify.app/workflow/WQb80SuLOoL9dWU3)
+**第 6 版已于 2026-11-06 10:35（Asia/Shanghai）发布，官方待提测。** [公开应用入口](https://udify.app/workflow/WQb80SuLOoL9dWU3)的七轮新存档实测均完成正常十节点主流程；七次 PowerContext 精确读回均返回 HTTP 200，35 项存储、77 项确定状态和 36 项渲染检查共 148 项通过。本地边界回归另有 24/24 通过，不能与云端运行次数混计。[实际证据与复验入口](evidence/consistent-narrative-cloud/README.md)记录原生 LLM 输出、第五至第六轮运行 ID、渲染审计及覆盖范围。
+
+此前第 5 版提交 `a9432d1a07f30bf84d33066fab31c31d87abf8f9` 获 0 分：第六轮账本已确认记忆赎回并成功回忆，模型正文却说仍在抵押柜中。[第 5 版历史证据](evidence/time-ledger-cloud/README.md)原样保留。第 6 版改为严格校验模型场景计划，再由 Code 渲染事实；本轮源码、可移植 DSL 与实际导入图的对应关系见新证据，工作区后续修改仍需重新导入、发布和核验。
 
 ## Dify 中的主流程
 
-提交分支基于 `2026-competition-ecosystem`，资产入口为 `dify/`。[clockwork-inn.yml](clockwork-inn.yml) 是可导入工作流，[build_dsl.py](build_dsl.py) 将 [game_rules.py](game_rules.py) 的规则代码嵌入 Dify Code 节点。动作识别、价格和状态约束以该规则文件为准。
+提交分支基于 `2026-competition-ecosystem`，资产入口为 `dify/`。[clockwork-inn.yml](clockwork-inn.yml) 是可导入工作流，[build_dsl.py](build_dsl.py) 将 [game_rules.py](game_rules.py) 和 [narrative.py](narrative.py) 嵌入 Dify Code 节点。动作识别、价格和状态约束以规则文件为准；计划校验与正文渲染以 `narrative.py` 为准。修订版保持原有正常回合的十节点主流程。
 
 1. Start 收集玩家、存档名、存档码和行动；Code 为新游戏派发存档码，编码本轮读取请求。
 2. HTTP 从真实 PowerContext 读取当前状态快照及与行动相关的历史。
-3. Code 校验状态并结算时间收支、物品、记忆和房间条件，输出确定的账本及叙事提示。
-4. IF/ELSE 将无需叙事的引导送到提示输出；可继续的回合进入原生 LLM 节点。该节点使用 OpenAI `gpt-4o-mini`，世界设定和已结算状态来自工作流内的规则节点。
-5. Code 将规则状态和模型正文编码，HTTP 写入 PowerContext；确认保存成功和 citation 后才输出剧情、账本、存档码与引用。
+3. Code 校验状态并结算时间收支、物品、记忆和房间条件，输出确定的账本、可用行动与当前事实。
+4. IF/ELSE 将无需叙事的引导送到提示输出；可继续的回合进入原生 OpenAI `gpt-4o-mini` LLM 节点，真实生成四字段 JSON 场景计划。
+5. 后续 Code 严格检查计划，从当前结算渲染正文，再将同一份正文和状态编码交给 HTTP 保存。确认 PowerContext 保存成功及 citation 后才输出剧情、账本、存档码与引用。非法计划在 HTTP 保存前抛出异常，本轮不写入存档。
+
+模型仅能选择以下内容：`scene` 为 `brass/ink/rain/shadow`，`motif` 为 `hands/sand/steam/chime`；`callback_turn` 为 0 或当前事件列表中真实存在的过去轮次；`next_choice` 为本轮可用行动数组的有效整数下标。额外字段、任意正文、未知枚举、错误类型和越界引用均不作为有效计划接受。
+
+这是**受约束的场景导演**：模型依据行动与前情选择氛围、历史呼应和下一步建议，影响最终场景组合，但不自由创作或更改事实句。历史引用明确标为过去记录，当前记忆归属、地点、余额和费用由 Code 渲染。模型任意自然语言正文不展示、不存档；该能力边界不是无限自由创作。计划校验结果与最终正文哈希可在渲染 Code 节点的 `audit` 输出中核查。
 
 V2 选择 **PowerContext 路线**。配套 `service.py` 在 V2 图中只承担 `/recall` 与 `/remember` 存储接口；模型调用和游戏结算不经过外部剧情接口。旧版兼容的 `/narrate`、`STORY_API_KEY` 和 `QODER_CLI` 不属于 V2 工作流，也不需要为 V2 配置模型网关。
 
@@ -60,11 +66,11 @@ cloudflared tunnel --url http://127.0.0.1:8766
 在 Dify 导入及发布：
 
 1. 在自己的工作区安装、授权 OpenAI 模型供应商，确保 `gpt-4o-mini` 可用。当前开发工作区已配置 Dify Cloud 托管免费额度；复现者需使用自己工作区的可用额度或已授权模型凭据，导入 DSL 不会转移额度或密钥。
-2. 导入 `dify/clockwork-inn.yml`，检查原生“掌柜叙事”LLM 节点，供应商为 `langgenius/openai/openai`，模型为 `gpt-4o-mini`。模型凭据在 Dify 工作区配置，不放到桥接环境或 YAML 中。
+2. 导入 `dify/clockwork-inn.yml`，检查原生“掌柜选择场景与前情”LLM 节点，供应商为 `langgenius/openai/openai`，模型为 `gpt-4o-mini`。模型凭据在 Dify 工作区配置，不放到桥接环境或 YAML 中。
 3. 将工作流环境变量 `bridge_url` 设置为桥接 HTTPS 地址，将 Secret 类型 `bridge_token` 设置为相同的 `BRIDGE_TOKEN`。默认 `host.docker.internal` 仅适用于可访问主机端口的本地 Docker 环境，不能直接用于 Dify Cloud。
-4. 按下方新存档样例调试正常回合和引导分支，检查 Code、IF/ELSE、LLM、存储写入及输出。保存草稿后再 Publish；导入草稿不会自动更新已发布版本。
+4. 按下方新存档样例调试正常回合和引导分支，检查原生 LLM 的实际 JSON 输出、Code 校验和正文、HTTP 保存及公开结果。另验非法计划被拒绝且保存节点不执行。保存草稿后再 Publish，并核验实际发布编号；导入草稿不会自动更新已发布版本。
 
-调整规则后可安装 PyYAML 并运行 `python dify/build_dsl.py` 重新生成 DSL，再导入、验证与发布。模型额度或服务不可用时应修复依赖后重试，不用固定故事代替真实模型输出。
+调整规则或渲染器后运行 `python dify/build_dsl.py` 重新生成 DSL，再导入、验证与发布；`dify/requirements.txt` 已固定 `PyYAML==6.0.3`。本地一致性检查入口为 `python -m unittest discover -s dify -p test_narrative_consistency.py -v`；本地检查和云端实际运行分别记录。模型额度不足、服务不可用或计划不合法时，本轮应明确失败，不把本地默认计划伪装为真实模型输出。
 
 ## 存档与动作
 
@@ -82,14 +88,14 @@ cloudflared tunnel --url http://127.0.0.1:8766
 | `回忆：蓝色车站的汽笛` | 抵押时拒绝且免费；持有或已赎回时花 2 分钟回忆 |
 | `买倒走钥匙` | 10 分钟，重复购买不扣费 |
 | `进入雨声室` | 8 分钟，不需要钥匙；初次进入获得雨声玻璃珠 |
-| `进入旧信室` / `进入回声室` | 分别 12 / 15 分钟，需要钥匙；初次进入分别获得未寄出的信 / 回声铃 |
+| `进入旧信室` / `进入回声室` | 从别处进入分别 12 / 15 分钟，需要钥匙；初次进入分别获得未寄出的信 / 回声铃。已在同一房间时继续查看免费，下一步提示也须显示免费 |
 | `结账离店` | 免费结束该存档，未赎回的记忆留在旅店，之后不能继续交易 |
 
-房间重复赠物、余额不足和未持钥匙均由 Code 规则判定。模型负责描写，不能改变已经确定的数值或将被拒绝的行为写成交易成功；面板与叙事是否一致也属于待检验内容。
+房间重复赠物、余额不足和未持钥匙均由 Code 规则判定。修订方案中模型只选择已限定的场景计划，事实正文由 Code 生成；验收仍需分别核查规则、最终正文、下一步建议和实际存档，不能只检查节点成功或保存成功。
 
-## 新例重放与预期检查
+## 新例重放与实测检查
 
-下表是公开第 5 版七轮实测的账本，也是复验的预期值。使用未使用过的玩家和存档名，例如 `ledger-review-日期-序号`、`steam-letter-日期-序号`。第一轮存档码留空，成功后将 Dify 输出的码用于其余各轮。
+第 6 版已使用新玩家 `ledger-guard-20261106`、存档名 `station-whistle-v3` 完成下表七轮，账本与预期相符；第六轮正文明确记忆归玩家持有、无需再次赎回。独立重放请使用未使用过的玩家和存档名，例如 `consistent-review-日期-序号`、`steam-letter-日期-序号`。第一轮存档码留空，成功后将 Dify 输出的码用于其余各轮。原始逐字行动见新证据的 `public-runs.json`。
 
 | 轮次 | 输入行动 | 预期余额 / 怀表 | 预期结果 |
 |---|---|---|---|
@@ -101,11 +107,21 @@ cloudflared tunnel --url http://127.0.0.1:8766
 | 6 | `回忆：蓝色车站的汽笛` | 16 分钟 / 11:11 | 可回忆该记忆，收取 2 分钟 |
 | 7 | `结账离店` | 16 分钟 / 11:11 | 存档结局关闭，物品与剩余时间保留 |
 
-云端另验了错误存档码和结账后再进房两条路径。前者只走引导，跳过模型与保存。后者保留结局和余额并保存拒绝回执。独立复验也可检查无钥匙进房、重复交易、桥接与 PowerContext 重启恢复、保存失败，以及相同轮次并发。实际云端结果和覆盖范围以证据索引为准。
+云端另验证了错误存档码走六节点引导分支，跳过 LLM 与保存；第八轮离店后再进入雨声室仍保留旅店外、16 分钟和 11:11。混合记忆状态、陈旧错误正文、非法计划、重复交易、房间条件、同室免费及长名安全拒绝由本地 24 项回归覆盖。模型或存储服务故障、重启续玩及并发重试未在本轮云端验证，不能据此声明通过。
+
+保留原始 PowerContext 数据并启动本地服务后，可在仓库根目录复验实际七轮记录。输出另存临时目录，避免覆盖提交证据：
+
+```powershell
+New-Item -ItemType Directory -Force .runtime | Out-Null
+.\.runtime\dify-venv\Scripts\python.exe dify/verify_cloud_evidence.py scp_52fvt62vccv5xrg11ejjgt39b0 dify/evidence/consistent-narrative-cloud/public-runs.json --output .runtime/dify-cloud-evidence-recheck.json
+```
+
+该命令需要包含本次 scope 与 citation 的原始数据库；全新空库无法读回这些记录。独立复现须先跑自己的七轮并记录对应 scope 与引用。脚本比较实际存储、重放确定规则并复现受约束渲染，不独立证明云端模型调用；原生调用与 token 用量由 Dify 日志和截图佐证。
 
 ## 证据范围
 
-- [time-ledger-cloud/README.md](evidence/time-ledger-cloud/README.md)：V2 公开七轮记录、原生 Code、IF/ELSE 和 LLM 追踪、PowerContext 精确读回、存档码隔离和离店保护。
+- [consistent-narrative-cloud/README.md](evidence/consistent-narrative-cloud/README.md)：第 6 版真实七轮运行、原生 LLM 与渲染证据、148 项一致性检查和本地 24 项回归；已发布，官方待提测。
+- [time-ledger-cloud/README.md](evidence/time-ledger-cloud/README.md)：已被否决的第 5 版历史记录，保留第六轮错误正文、账本及原始存储比对，不能证明新版本通过。
 - [dify-cloud-runs/README.md](evidence/dify-cloud-runs/README.md)：保留 V1 银雨七号两轮真实 Dify 执行证据。它证明旧版流程曾运行，不能证明 V2 规则或原生 LLM 已运行。
 - [cloud-workflow-recovery.json](evidence/cloud-workflow-recovery.json)：V1 外部新 Python 进程读回及玩家隔离验证，不是 V2 引擎节点日志或存档码验证。
 - [powercontext-integration.json](evidence/powercontext-integration.json)：使用 synthetic story text 的真实 PowerContext 存储测试，不是实际模型生成或 Dify 执行证据。

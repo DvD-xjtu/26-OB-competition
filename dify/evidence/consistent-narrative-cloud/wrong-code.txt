@@ -1,0 +1,46 @@
+Browser tab: 35, Title: "倒走钟表旅店 - Dify", URL: "https://udify.app/workflow/WQb80SuLOoL9dWU3".
+0 AXWebArea 倒走钟表旅店 - Dify, URL: udify.app/workflow/WQb80SuLOoL9dWU3
+	1 container
+		4 text 倒走钟表旅店
+		5 pop up button (collapsed) Description: 更多, ID: base-ui-_r_3_, Secondary Actions: Expand
+		6 tab group
+			7 tab (selected, settable, boolean) 运行一次, Value: 1, ID: base-ui-_r_5_
+			8 tab (selectable, settable, boolean) 批量运行, Value: 0, ID: base-ui-_r_6_
+		9 container Description: 运行一次, ID: base-ui-_r_7_
+			10 container
+				11 text 玩家标识
+				12 text field (settable) 玩家标识, Value: ledger-guard-20261106, ID: base-ui-_r_a_
+				13 text 故事存档名
+				14 text field (settable) 故事存档名, Value: station-whistle-v3, ID: base-ui-_r_b_
+				15 text 存档码（新游戏留空） （选填）
+				16 text field (settable) 存档码（新游戏留空）, Value: 00000000000000000000000000000000, ID: base-ui-_r_c_
+				17 text 行动（例如：观察怀表、典当记忆、买钥匙、进钟室）
+				18 text entry area (settable) 行动（例如：观察怀表、典当记忆、买钥匙、进钟室）, Value: 看怀表, ID: base-ui-_r_d_
+				19 button 清空
+				20 button 运行
+		21 text POWERED BY
+		22 image Dify
+		23 container
+			24 button (expanded) 工作流运行成功 工作流, Secondary Actions: Collapse
+				25 image 工作流运行成功
+				26 text 工作流
+			27 container
+				28 container base-ui-_r_8k_
+					29 text 进入倒走钟表旅店 成功
+				30 container base-ui-_r_8n_
+					31 text 派发存档码并按行动检索 成功
+				32 container base-ui-_r_8q_
+					33 text POWERCONTEXT 读取当前状态与相关记忆 成功
+				34 container base-ui-_r_8t_
+					35 text 结算账本、物品、怀表与房间规则 成功
+				36 container base-ui-_r_90_
+					37 text 引导分支或继续剧情 成功
+				38 container base-ui-_r_94_
+					39 text 显示行动提示 成功
+			40 text 结果
+			41 text 详情
+			42 text 未找到该存档。请核对玩家标识、存档名和存档码；开始新游戏时请留空存档码。
+			43 button 复制
+		3 container Notifications
+
+The focused UI element is 20 button 运行

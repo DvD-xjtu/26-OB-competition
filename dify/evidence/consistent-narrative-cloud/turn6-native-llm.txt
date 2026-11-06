@@ -1,0 +1,366 @@
+- link:
+  - /url: "#main-content"
+  - text: 跳转到主要内容
+- navigation:
+  - list:
+    - link:
+      - /url: /
+    - listitem: /
+    - link:
+      - /url: /apps
+      - text: 工作室
+- button
+- button
+- generic: 🕰️
+- generic: 倒走钟表旅店 · 时间账本
+- button
+- generic: 工作流
+- navigation:
+  - link:
+    - /url: /app/e379a3f6-d769-46e5-84c5-ffe21fe53d36/workflow
+    - generic: 编排
+  - link:
+    - /url: /app/e379a3f6-d769-46e5-84c5-ffe21fe53d36/access-point
+    - generic: 访问入口
+  - separator
+  - link:
+    - /url: /app/e379a3f6-d769-46e5-84c5-ffe21fe53d36/logs
+    - generic: 日志
+  - separator
+  - link:
+    - /url: /app/e379a3f6-d769-46e5-84c5-ffe21fe53d36/overview
+    - generic: 监测
+- button:
+  - generic: D
+  - generic: Dify
+  - generic: 账户
+- button
+- main:
+  - heading [level=1]: 日志
+  - paragraph: 日志记录了应用的执行情况
+  - combobox:
+    - generic: 全部
+  - button
+  - textbox: all
+  - combobox:
+    - generic: 过去 7 天
+  - button
+  - textbox: "2"
+  - searchbox
+  - status:
+    - paragraph: 升级即可无限期保留升级后生成的日志；此前已过期的日志无法恢复。
+    - button "升级":
+      - generic: 升级
+  - table:
+    - rowgroup:
+      - row:
+        - cell
+        - columnheader:
+          - button:
+            - text: 开始时间
+        - columnheader: 状态
+        - columnheader: 运行时间
+        - columnheader: TOKENS
+        - columnheader: 用户或账户
+        - columnheader: 触发方式
+    - rowgroup:
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:42:46
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 3.339s
+        - cell: "2333"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button [expanded]: 2026-11-06 10:41:02
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 3.568s
+        - cell: "2119"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:40:42
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 2.987s
+        - cell: "2199"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:40:06
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 3.030s
+        - cell: "1598"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:39:47
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 3.238s
+        - cell: "1450"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:38:58
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 4.147s
+        - cell: "1292"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:37:16
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 3.058s
+        - cell: "867"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 10:17:44
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 6.942s
+        - cell: "2391"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 09:47:39
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 5.708s
+        - cell: "2364"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+      - row:
+        - cell
+        - cell:
+          - button: 2026-11-06 09:17:49
+        - cell:
+          - generic: 成功
+        - cell:
+          - generic: 6.178s
+        - cell: "2364"
+        - cell:
+          - generic: 63059c42-2854-4e73-b5fb-5a6162eca10c
+        - cell:
+          - generic: 网页应用
+  - navigation:
+    - button [disabled]
+    - button:
+      - generic: "1"
+      - generic: /
+      - generic: "8"
+    - button
+    - list:
+      - button: "1"
+      - button: "2"
+      - button: "3"
+      - button: "4"
+      - button: "5"
+      - generic: …
+      - button: "8"
+    - generic: 每页显示
+    - radiogroup:
+      - radio [checked]: "10"
+      - radio [checked]
+      - radio: "25"
+      - radio
+      - radio: "50"
+      - radio
+- alert
+- region "Notifications"
+- dialog:
+  - button "关闭":
+  - heading "日志详情" [level=1]
+  - button "按此参数测试":
+  - tablist:
+    - tab "结果"
+    - tab "详情"
+    - tab "追踪" [selected]
+  - tabpanel "追踪":
+    - button "进入倒走钟表旅店 0.108 ms 成功":
+      - generic: 进入倒走钟表旅店
+      - generic: 0.108 ms
+      - generic: 成功
+    - button "派发存档码并按行动检索 330.357 ms 成功":
+      - generic: 派发存档码并按行动检索
+      - generic: 330.357 ms
+      - generic: 成功
+    - button "PowerContext 读取当前状态与相关记忆 650.287 ms 成功":
+      - generic: PowerContext 读取当前状态与相关记忆
+      - generic: 650.287 ms
+      - generic: 成功
+    - button "结算账本、物品、怀表与房间规则 180.046 ms 成功":
+      - generic: 结算账本、物品、怀表与房间规则
+      - generic: 180.046 ms
+      - generic: 成功
+    - button "引导分支或继续剧情 0.197 ms 成功":
+      - generic: 引导分支或继续剧情
+      - generic: 0.197 ms
+      - generic: 成功
+    - button "掌柜选择场景与前情 2.119K tokens · 1.507 s 成功" [expanded]:
+      - generic: 掌柜选择场景与前情
+      - generic: 2.119K tokens · 1.507 s
+      - generic: 成功
+    - generic: 输入
+    - button "复制"
+    - button "展开"
+    - code:
+      - generic: 
+      - generic: "1"
+      - generic: "2"
+      - generic: "{"
+      - generic: "\"#rules.system_prompt#\": \"你是互动游戏“倒走钟表旅店”的场景导演，"
+      - generic: 必须真实阅读当前结算和前情，为这一轮选择叙事计划。\n你只输出一个
+      - generic: "JSON 对象，不写自由叙事或额外字段：\\n{\\\"scene\\\":\\\"brass\\\","
+      - generic: "\\\"motif\\\":\\\"hands\\\",\\\"callback_turn\\\":0,\\\"next_choice\\\":0}"
+      - generic: \nscene 只能为 brass（黄铜光影）、ink（旧账墨迹）、rain（雨丝窗
+      - generic: 影）、shadow（钟影）。\nmotif 只能为 hands（倒走装饰钟）、sand
+      - generic: （向上沙漏）、steam（倒流蒸汽壁画）、chime（倒序钟声）。\n根据行
+      - generic: 动、记忆意象和既有选择，选择贴合本轮的场景组合，不要每轮机械重复。
+      - textbox "Editor content"
+    - button "调整编辑器尺寸"
+    - generic: 高度：172 像素 使用上下方向键调整高度，按住 Shift 加速。Home 或 Enter 恢复最小高度。
+    - generic: 数据处理
+    - button "复制"
+    - button "展开"
+    - code:
+      - generic: 
+      - generic: "1"
+      - generic: "2"
+      - generic: 
+      - generic: "3"
+      - generic: 
+      - generic: "4"
+      - generic: "5"
+      - generic: "6"
+      - generic: "{"
+      - generic: "\"model_mode\": \"chat\","
+      - generic: "\"prompts\": ["
+      - generic: "{"
+      - generic: "\"role\": \"system\","
+      - generic: "\"text\": \"你是互动游戏“倒走钟表旅店”的场景导演，必须真实阅读当"
+      - generic: 前结算和前情，为这一轮选择叙事计划。\n你只输出一个 JSON 对
+      - generic: "象，不写自由叙事或额外字段：\\n{\\\"scene\\\":\\\"brass\\\","
+      - generic: \"motif\":\"hands\",\"callback_turn\":0,
+      - textbox "Editor content"
+    - button "调整编辑器尺寸"
+    - generic: 高度：172 像素 使用上下方向键调整高度，按住 Shift 加速。Home 或 Enter 恢复最小高度。
+    - generic: 输出
+    - button "复制"
+    - button "折叠" [active]
+    - code:
+      - generic: 
+      - generic: "1"
+      - generic: "2"
+      - generic: "3"
+      - generic: 
+      - generic: "4"
+      - generic: "5"
+      - generic: "6"
+      - generic: "7"
+      - generic: "8"
+      - generic: "9"
+      - generic: "10"
+      - generic: "11"
+      - generic: "12"
+      - generic: "13"
+      - generic: "14"
+      - generic: "15"
+      - generic: "16"
+      - generic: "17"
+      - generic: "18"
+      - generic: "19"
+      - generic: "20"
+      - generic: "21"
+      - generic: "{"
+      - generic: "\"text\": \"```json\\n{\\\"scene\\\":\\\"ink\\\",\\\"motif\\\":\\\"hands\\\","
+      - generic: "\\\"callback_turn\\\":5,\\\"next_choice\\\":1}\\n```\","
+      - generic: "\"reasoning_content\": \"\","
+      - generic: "\"usage\": {"
+      - generic: "\"prompt_tokens\": 2094,"
+      - generic: "\"prompt_unit_price\": \"0.15\","
+      - generic: "\"prompt_price_unit\": \"0.000001\","
+      - generic: "\"prompt_price\": \"0.0003141\","
+      - generic: "\"completion_tokens\": 25,"
+      - generic: "\"completion_unit_price\": \"0.6\","
+      - generic: "\"completion_price_unit\": \"0.000001\","
+      - generic: "\"completion_price\": \"0.000015\","
+      - generic: "\"total_tokens\": 2119,"
+      - generic: "\"total_price\": \"0.0003291\","
+      - generic: "\"currency\": \"USD\","
+      - generic: "\"latency\": 1.504,"
+      - generic: "\"time_to_first_token\": 1.121,"
+      - generic: "\"time_to_generate\": 0.383"
+      - generic: "},"
+      - generic: "\"finish_reason\": \"stop\""
+      - generic: "}"
+      - textbox "Editor content"
+    - button "校验模型计划并渲染已结算剧情 178.805 ms 成功":
+      - generic: 校验模型计划并渲染已结算剧情
+      - generic: 178.805 ms
+      - generic: 成功
+    - button "PowerContext 提交本轮账本 443.302 ms 成功":
+      - generic: PowerContext 提交本轮账本
+      - generic: 443.302 ms
+      - generic: 成功
+    - button "确认写入与引用 117.026 ms 成功":
+      - generic: 确认写入与引用
+      - generic: 117.026 ms
+      - generic: 成功
+    - button "展示剧情、账本和存档码 0.084 ms 成功":
+      - generic: 展示剧情、账本和存档码
+      - generic: 0.084 ms
+      - generic: 成功
+- alert
+- alert

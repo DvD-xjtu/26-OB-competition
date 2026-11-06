@@ -1,0 +1,45 @@
+{
+  "published_version": 6,
+  "workflow_id": "29c1d125-27d3-49af-b353-24597a9b53ff",
+  "source_sha256": {
+    "game_rules.py": "a848bbd366ae54ba79225aaa71ea6136af35cef587d31ceb4ed49d8a25e1c771",
+    "narrative.py": "41650c63a543739c8b6cdae964654662c2e6653489c41cdb69f0e1dd632bfcd8",
+    "build_dsl.py": "ec29a02ec4d16f5d2a55ff0bea509612f95ce363ea6481c8630ec644c9f36c26",
+    "clockwork-inn.yml": "74d7581e806417e7d5e9eb644f4da3f3d7b88d45473aa7733702736e9511864c"
+  },
+  "checked_graph_matches_imported_dsl": true,
+  "environment_difference": "Portable DSL uses local placeholder URL and empty Secret; cloud import used the configured bridge and pre-authorized secret, not exported.",
+  "source": "Dify Cloud UI details, actual runs",
+  "runs": [
+    {
+      "turn": 5,
+      "workflow_run_id": "29b251aa-8898-4378-8739-2f943606ed83",
+      "started_at_local": "2026-11-06T10:40:42+08:00",
+      "elapsed_seconds": 2.987,
+      "total_tokens": 2199,
+      "total_steps": 10,
+      "status": "succeeded"
+    },
+    {
+      "turn": 6,
+      "workflow_run_id": "ea7d8870-3e41-46f2-a6c4-00c3bfddc310",
+      "started_at_local": "2026-11-06T10:41:02+08:00",
+      "elapsed_seconds": 3.568,
+      "total_tokens": 2119,
+      "total_steps": 10,
+      "status": "succeeded",
+      "observed_model_output": "```json\n{\"scene\":\"ink\",\"motif\":\"hands\",\"callback_turn\":5,\"next_choice\":1}\n```",
+      "observed_audit": {
+        "renderer": "bounded-plan-v1",
+        "validated": true,
+        "model_prose_used": false,
+        "balance": 16,
+        "state_turn": 6,
+        "memory_statuses": {
+          "f0b99fdee6934c28": "redeemed"
+        },
+        "story_sha256": "29fb250c8f76b6d7254d3301665fe745d7598ac29073113ea173b71c574fa50b"
+      }
+    }
+  ]
+}

@@ -1,0 +1,1256 @@
+{
+  "checked_at_utc": "2026-11-06T02:43:25.379467+00:00",
+  "scope_id": "scp_52fvt62vccv5xrg11ejjgt39b0",
+  "endpoint": "http://127.0.0.1:8000/v1/memory/entries/get",
+  "verification_method": {
+    "storage": "Exact UTF-8 action/story comparison at the supplied PowerContext citations.",
+    "state": "Production rule replay, full JSON-state equality, and explicit seven-turn expected balances/ownership.",
+    "narrative": "Exact bounded-renderer reproduction and current-ownership template checks. No LLM semantic judge was used.",
+    "cloud_execution": "Node statuses are supplied observations. This script does not independently attest native LLM invocation or token usage.",
+    "redaction": "No save code, transport owner, API credential, raw HTTP response, or environment dump is included."
+  },
+  "source_sha256": {
+    "game_rules.py": "9b0754fff52c568788c30c57145a5e9bdcfd551ddff6586e6236b4c0f67a4bad",
+    "narrative.py": "41650c63a543739c8b6cdae964654662c2e6653489c41cdb69f0e1dd632bfcd8"
+  },
+  "summary": {
+    "storage_exact_pass": true,
+    "deterministic_state_pass": true,
+    "bounded_template_pass": true,
+    "recorded_nodes_all_success": true,
+    "recorded_native_llm_success": true,
+    "citation_revisions_strictly_increase": true
+  },
+  "all_checks_pass": true,
+  "runs": [
+    {
+      "turn": 1,
+      "observed_at": "2026-11-06T02:38:28.183Z",
+      "checked_at_utc": "2026-11-06T02:43:25.248445+00:00",
+      "http_status": 200,
+      "powercontext_request_id": "e6738b5e6c06cfeb",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 1
+        },
+        "entry_id": "mem_ent_a530cce4c56a41fcb5e3eef0d9909075",
+        "entry_version_id": "mem_ver_2a9cc172054c4e23a0ab096f8395dd8d"
+      },
+      "entry_version": 1,
+      "action_sha256_utf8": "eaad556394bea533f2a8ec36bd90bfb60605e923339058b0bbbcc9b5de64ee3f",
+      "story_sha256_utf8": "33128990022e235e3966b3bfbf13c472e313c96f7bc29645634a97ea051d691f",
+      "public_story_sha256_utf8": "33128990022e235e3966b3bfbf13c472e313c96f7bc29645634a97ea051d691f",
+      "state_sha256": "6cfe7b196debc7d5297170cc8ec5e7c3a5294ed502361d781e08f52586d02443",
+      "expected_state_sha256": "6cfe7b196debc7d5297170cc8ec5e7c3a5294ed502361d781e08f52586d02443",
+      "public_state": {
+        "schema": 2,
+        "player": "ledger-guard-20261106",
+        "chapter": "station-whistle-v3",
+        "turn": 1,
+        "minutes": 65,
+        "earned": 20,
+        "spent": 0,
+        "clock": 720,
+        "location": "门厅",
+        "inventory": [
+          "黄铜怀表"
+        ],
+        "watch_name": "",
+        "memories": [
+          {
+            "created_turn": 1,
+            "id": "f0b99fdee6934c28",
+            "label": "蓝色车站汽笛",
+            "status": "pledged",
+            "trades": 1
+          }
+        ],
+        "visited": [],
+        "events": [
+          {
+            "action": "典当蓝色车站汽笛的记忆",
+            "branch": "trade",
+            "outcome": "典当“蓝色车站汽笛”，获得 20 分钟；这段记忆在赎回前无法回忆。",
+            "turn": 1
+          }
+        ],
+        "closed": false,
+        "last_action_id": "c40a4522379726cb204bca1d8e200c465e62e77ceb6938ea94b9132cb3615c94"
+      },
+      "current_outcome": "典当“蓝色车站汽笛”，获得 20 分钟；这段记忆在赎回前无法回忆。",
+      "recorded_node_statuses": [
+        {
+          "node": "进入倒走钟表旅店",
+          "status": "成功"
+        },
+        {
+          "node": "派发存档码并按行动检索",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 读取当前状态与相关记忆",
+          "status": "成功"
+        },
+        {
+          "node": "结算账本、物品、怀表与房间规则",
+          "status": "成功"
+        },
+        {
+          "node": "引导分支或继续剧情",
+          "status": "成功"
+        },
+        {
+          "node": "掌柜选择场景与前情",
+          "status": "成功"
+        },
+        {
+          "node": "校验模型计划并渲染已结算剧情",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 提交本轮账本",
+          "status": "成功"
+        },
+        {
+          "node": "确认写入与引用",
+          "status": "成功"
+        },
+        {
+          "node": "展示剧情、账本和存档码",
+          "status": "成功"
+        }
+      ],
+      "recorded_nodes_all_success": true,
+      "recorded_native_llm_success": true,
+      "storage_exact_checks": {
+        "citation_exact": true,
+        "entry_active": true,
+        "structured_game_envelope": true,
+        "action_utf8_exact": true,
+        "story_utf8_exact": true
+      },
+      "storage_exact_pass": true,
+      "deterministic_state_checks": {
+        "public_turn_order": true,
+        "state_turn": true,
+        "balance_expected": true,
+        "resource_conservation": true,
+        "full_state_matches_rule_replay": true,
+        "location_expected": true,
+        "closed_only_after_turn_seven": true,
+        "one_memory_with_expected_ownership": true,
+        "cost_expected": true,
+        "last_event_matches_current_outcome": true,
+        "public_ledger_exact": true
+      },
+      "deterministic_state_pass": true,
+      "bounded_template_checks": {
+        "contains_current_outcome": true,
+        "contains_current_location_balance_clock": true,
+        "no_spurious_current_owned_claim": true,
+        "pledged_memory_has_current_claim": true,
+        "full_story_matches_bounded_renderer_utf8": true
+      },
+      "bounded_template_pass": true,
+      "inferred_plan": {
+        "scene": "ink",
+        "motif": "sand",
+        "callback_turn": 0,
+        "next_choice": 1
+      },
+      "locally_recomputed_renderer_audit": {
+        "balance": 65,
+        "memory_statuses": {
+          "f0b99fdee6934c28": "pledged"
+        },
+        "model_prose_used": false,
+        "plan": {
+          "callback_turn": 0,
+          "motif": "sand",
+          "next_choice": 1,
+          "scene": "ink"
+        },
+        "renderer": "bounded-plan-v1",
+        "state_turn": 1,
+        "story_sha256": "33128990022e235e3966b3bfbf13c472e313c96f7bc29645634a97ea051d691f",
+        "validated": true
+      }
+    },
+    {
+      "turn": 2,
+      "observed_at": "2026-11-06T02:39:44.723Z",
+      "checked_at_utc": "2026-11-06T02:43:25.272852+00:00",
+      "http_status": 200,
+      "powercontext_request_id": "d5955fb0a6777357",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 2
+        },
+        "entry_id": "mem_ent_6a0aeff116b34f31a82477a042c1741e",
+        "entry_version_id": "mem_ver_c3a98ef161f74e87b299c7c9abcb8dcf"
+      },
+      "entry_version": 1,
+      "action_sha256_utf8": "ac34fabcd1459e056719f325fa7cde39219f98605db237510f0847b69cb2c8b8",
+      "story_sha256_utf8": "89eb67bc180c2095541fe50dcd1cbc9e4ba4e4a4c86402e03d0ceed1a123bcd1",
+      "public_story_sha256_utf8": "89eb67bc180c2095541fe50dcd1cbc9e4ba4e4a4c86402e03d0ceed1a123bcd1",
+      "state_sha256": "0b7d2a00478e1d3a7f5b7a79fd1b0af4009cfce63d265d6d233271c28e102122",
+      "expected_state_sha256": "0b7d2a00478e1d3a7f5b7a79fd1b0af4009cfce63d265d6d233271c28e102122",
+      "public_state": {
+        "schema": 2,
+        "player": "ledger-guard-20261106",
+        "chapter": "station-whistle-v3",
+        "turn": 2,
+        "minutes": 65,
+        "earned": 20,
+        "spent": 0,
+        "clock": 720,
+        "location": "门厅",
+        "inventory": [
+          "黄铜怀表"
+        ],
+        "watch_name": "",
+        "memories": [
+          {
+            "created_turn": 1,
+            "id": "f0b99fdee6934c28",
+            "label": "蓝色车站汽笛",
+            "status": "pledged",
+            "trades": 1
+          }
+        ],
+        "visited": [],
+        "events": [
+          {
+            "action": "典当蓝色车站汽笛的记忆",
+            "branch": "trade",
+            "outcome": "典当“蓝色车站汽笛”，获得 20 分钟；这段记忆在赎回前无法回忆。",
+            "turn": 1
+          },
+          {
+            "action": "回忆蓝色车站汽笛",
+            "branch": "recall",
+            "outcome": "“蓝色车站汽笛”仍在抵押柜。你能认出标签，但无法重现内容；赎回需 25 分钟。这次尝试免费。",
+            "turn": 2
+          }
+        ],
+        "closed": false,
+        "last_action_id": "a61e0c45500384a6dfd1c2a02fbb4b3e298f15a470865b6e0acefc145131dbbd"
+      },
+      "current_outcome": "“蓝色车站汽笛”仍在抵押柜。你能认出标签，但无法重现内容；赎回需 25 分钟。这次尝试免费。",
+      "recorded_node_statuses": [
+        {
+          "node": "进入倒走钟表旅店",
+          "status": "成功"
+        },
+        {
+          "node": "派发存档码并按行动检索",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 读取当前状态与相关记忆",
+          "status": "成功"
+        },
+        {
+          "node": "结算账本、物品、怀表与房间规则",
+          "status": "成功"
+        },
+        {
+          "node": "引导分支或继续剧情",
+          "status": "成功"
+        },
+        {
+          "node": "掌柜选择场景与前情",
+          "status": "成功"
+        },
+        {
+          "node": "校验模型计划并渲染已结算剧情",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 提交本轮账本",
+          "status": "成功"
+        },
+        {
+          "node": "确认写入与引用",
+          "status": "成功"
+        },
+        {
+          "node": "展示剧情、账本和存档码",
+          "status": "成功"
+        }
+      ],
+      "recorded_nodes_all_success": true,
+      "recorded_native_llm_success": true,
+      "storage_exact_checks": {
+        "citation_exact": true,
+        "entry_active": true,
+        "structured_game_envelope": true,
+        "action_utf8_exact": true,
+        "story_utf8_exact": true
+      },
+      "storage_exact_pass": true,
+      "deterministic_state_checks": {
+        "public_turn_order": true,
+        "state_turn": true,
+        "balance_expected": true,
+        "resource_conservation": true,
+        "full_state_matches_rule_replay": true,
+        "location_expected": true,
+        "closed_only_after_turn_seven": true,
+        "one_memory_with_expected_ownership": true,
+        "cost_expected": true,
+        "last_event_matches_current_outcome": true,
+        "public_ledger_exact": true
+      },
+      "deterministic_state_pass": true,
+      "bounded_template_checks": {
+        "contains_current_outcome": true,
+        "contains_current_location_balance_clock": true,
+        "no_spurious_current_owned_claim": true,
+        "pledged_memory_has_current_claim": true,
+        "full_story_matches_bounded_renderer_utf8": true
+      },
+      "bounded_template_pass": true,
+      "inferred_plan": {
+        "scene": "ink",
+        "motif": "hands",
+        "callback_turn": 1,
+        "next_choice": 0
+      },
+      "locally_recomputed_renderer_audit": {
+        "balance": 65,
+        "memory_statuses": {
+          "f0b99fdee6934c28": "pledged"
+        },
+        "model_prose_used": false,
+        "plan": {
+          "callback_turn": 1,
+          "motif": "hands",
+          "next_choice": 0,
+          "scene": "ink"
+        },
+        "renderer": "bounded-plan-v1",
+        "state_turn": 2,
+        "story_sha256": "89eb67bc180c2095541fe50dcd1cbc9e4ba4e4a4c86402e03d0ceed1a123bcd1",
+        "validated": true
+      }
+    },
+    {
+      "turn": 3,
+      "observed_at": "2026-11-06T02:40:03.875Z",
+      "checked_at_utc": "2026-11-06T02:43:25.294942+00:00",
+      "http_status": 200,
+      "powercontext_request_id": "512d1d0f22a8639d",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 3
+        },
+        "entry_id": "mem_ent_66125bf6a36d45b0b2ee2fa74a2f8e33",
+        "entry_version_id": "mem_ver_1d0e6e6bc1a14db7a4b9bc17510f6935"
+      },
+      "entry_version": 1,
+      "action_sha256_utf8": "4824c7526ab5ccb1757234c15887eca3893c387ec6ba68a4ea33edc863ffe9c7",
+      "story_sha256_utf8": "166a3fd6247afecf36c47076a838e4fb7a787a42725f314ffb7b57a8cb1c8dd4",
+      "public_story_sha256_utf8": "166a3fd6247afecf36c47076a838e4fb7a787a42725f314ffb7b57a8cb1c8dd4",
+      "state_sha256": "164f33052ba89b588f179b1075440a0651f9917d0a54828f099a0540ac695460",
+      "expected_state_sha256": "164f33052ba89b588f179b1075440a0651f9917d0a54828f099a0540ac695460",
+      "public_state": {
+        "schema": 2,
+        "player": "ledger-guard-20261106",
+        "chapter": "station-whistle-v3",
+        "turn": 3,
+        "minutes": 55,
+        "earned": 20,
+        "spent": 10,
+        "clock": 710,
+        "location": "门厅",
+        "inventory": [
+          "黄铜怀表",
+          "倒走钥匙"
+        ],
+        "watch_name": "",
+        "memories": [
+          {
+            "created_turn": 1,
+            "id": "f0b99fdee6934c28",
+            "label": "蓝色车站汽笛",
+            "status": "pledged",
+            "trades": 1
+          }
+        ],
+        "visited": [],
+        "events": [
+          {
+            "action": "典当蓝色车站汽笛的记忆",
+            "branch": "trade",
+            "outcome": "典当“蓝色车站汽笛”，获得 20 分钟；这段记忆在赎回前无法回忆。",
+            "turn": 1
+          },
+          {
+            "action": "回忆蓝色车站汽笛",
+            "branch": "recall",
+            "outcome": "“蓝色车站汽笛”仍在抵押柜。你能认出标签，但无法重现内容；赎回需 25 分钟。这次尝试免费。",
+            "turn": 2
+          },
+          {
+            "action": "买倒走钥匙",
+            "branch": "trade",
+            "outcome": "支付 10 分钟获得倒走钥匙，旧信室和回声室已可进入。",
+            "turn": 3
+          }
+        ],
+        "closed": false,
+        "last_action_id": "bd28f0b0b34720f750687d7f9439f839da1d0d54784b9da32eb41cfed96ee28c"
+      },
+      "current_outcome": "支付 10 分钟获得倒走钥匙，旧信室和回声室已可进入。",
+      "recorded_node_statuses": [
+        {
+          "node": "进入倒走钟表旅店",
+          "status": "成功"
+        },
+        {
+          "node": "派发存档码并按行动检索",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 读取当前状态与相关记忆",
+          "status": "成功"
+        },
+        {
+          "node": "结算账本、物品、怀表与房间规则",
+          "status": "成功"
+        },
+        {
+          "node": "引导分支或继续剧情",
+          "status": "成功"
+        },
+        {
+          "node": "掌柜选择场景与前情",
+          "status": "成功"
+        },
+        {
+          "node": "校验模型计划并渲染已结算剧情",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 提交本轮账本",
+          "status": "成功"
+        },
+        {
+          "node": "确认写入与引用",
+          "status": "成功"
+        },
+        {
+          "node": "展示剧情、账本和存档码",
+          "status": "成功"
+        }
+      ],
+      "recorded_nodes_all_success": true,
+      "recorded_native_llm_success": true,
+      "storage_exact_checks": {
+        "citation_exact": true,
+        "entry_active": true,
+        "structured_game_envelope": true,
+        "action_utf8_exact": true,
+        "story_utf8_exact": true
+      },
+      "storage_exact_pass": true,
+      "deterministic_state_checks": {
+        "public_turn_order": true,
+        "state_turn": true,
+        "balance_expected": true,
+        "resource_conservation": true,
+        "full_state_matches_rule_replay": true,
+        "location_expected": true,
+        "closed_only_after_turn_seven": true,
+        "one_memory_with_expected_ownership": true,
+        "cost_expected": true,
+        "last_event_matches_current_outcome": true,
+        "public_ledger_exact": true
+      },
+      "deterministic_state_pass": true,
+      "bounded_template_checks": {
+        "contains_current_outcome": true,
+        "contains_current_location_balance_clock": true,
+        "no_spurious_current_owned_claim": true,
+        "pledged_memory_has_current_claim": true,
+        "full_story_matches_bounded_renderer_utf8": true
+      },
+      "bounded_template_pass": true,
+      "inferred_plan": {
+        "scene": "brass",
+        "motif": "hands",
+        "callback_turn": 2,
+        "next_choice": 0
+      },
+      "locally_recomputed_renderer_audit": {
+        "balance": 55,
+        "memory_statuses": {
+          "f0b99fdee6934c28": "pledged"
+        },
+        "model_prose_used": false,
+        "plan": {
+          "callback_turn": 2,
+          "motif": "hands",
+          "next_choice": 0,
+          "scene": "brass"
+        },
+        "renderer": "bounded-plan-v1",
+        "state_turn": 3,
+        "story_sha256": "166a3fd6247afecf36c47076a838e4fb7a787a42725f314ffb7b57a8cb1c8dd4",
+        "validated": true
+      }
+    },
+    {
+      "turn": 4,
+      "observed_at": "2026-11-06T02:40:39.863Z",
+      "checked_at_utc": "2026-11-06T02:43:25.318573+00:00",
+      "http_status": 200,
+      "powercontext_request_id": "4742631e4e02be48",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 4
+        },
+        "entry_id": "mem_ent_e765f5b280784f5086f1be07dcd9dd22",
+        "entry_version_id": "mem_ver_1119f88e7c7c40d09c4a051dad952063"
+      },
+      "entry_version": 1,
+      "action_sha256_utf8": "6380f3660f24d5e720252588ae5a48f122bad8b0cd957a8dc3c34a78de940445",
+      "story_sha256_utf8": "20c9f4e2ebf4aa7ba612e281bde8c93d09e619e54c62e5474a722cd13ad54d0a",
+      "public_story_sha256_utf8": "20c9f4e2ebf4aa7ba612e281bde8c93d09e619e54c62e5474a722cd13ad54d0a",
+      "state_sha256": "ab1dbd99b9e7f7628630f61a558d7be99078abcaadb9abe924d9e6c113c3e026",
+      "expected_state_sha256": "ab1dbd99b9e7f7628630f61a558d7be99078abcaadb9abe924d9e6c113c3e026",
+      "public_state": {
+        "schema": 2,
+        "player": "ledger-guard-20261106",
+        "chapter": "station-whistle-v3",
+        "turn": 4,
+        "minutes": 43,
+        "earned": 20,
+        "spent": 22,
+        "clock": 698,
+        "location": "旧信室",
+        "inventory": [
+          "黄铜怀表",
+          "倒走钥匙",
+          "未寄出的信"
+        ],
+        "watch_name": "",
+        "memories": [
+          {
+            "created_turn": 1,
+            "id": "f0b99fdee6934c28",
+            "label": "蓝色车站汽笛",
+            "status": "pledged",
+            "trades": 1
+          }
+        ],
+        "visited": [
+          "旧信室"
+        ],
+        "events": [
+          {
+            "action": "典当蓝色车站汽笛的记忆",
+            "branch": "trade",
+            "outcome": "典当“蓝色车站汽笛”，获得 20 分钟；这段记忆在赎回前无法回忆。",
+            "turn": 1
+          },
+          {
+            "action": "回忆蓝色车站汽笛",
+            "branch": "recall",
+            "outcome": "“蓝色车站汽笛”仍在抵押柜。你能认出标签，但无法重现内容；赎回需 25 分钟。这次尝试免费。",
+            "turn": 2
+          },
+          {
+            "action": "买倒走钥匙",
+            "branch": "trade",
+            "outcome": "支付 10 分钟获得倒走钥匙，旧信室和回声室已可进入。",
+            "turn": 3
+          },
+          {
+            "action": "进入旧信室",
+            "branch": "room",
+            "outcome": "支付 12 分钟进入旧信室。信中没有替你决定收件人，信封上的邮戳正在向昨天倒退。首次来访，取得“未寄出的信”；再次进入不会重复获得。",
+            "turn": 4
+          }
+        ],
+        "closed": false,
+        "last_action_id": "740d0f912d4352ac88bad23ba8180c204df1351e3cdaaa63983ae8f97839a86c"
+      },
+      "current_outcome": "支付 12 分钟进入旧信室。信中没有替你决定收件人，信封上的邮戳正在向昨天倒退。首次来访，取得“未寄出的信”；再次进入不会重复获得。",
+      "recorded_node_statuses": [
+        {
+          "node": "进入倒走钟表旅店",
+          "status": "成功"
+        },
+        {
+          "node": "派发存档码并按行动检索",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 读取当前状态与相关记忆",
+          "status": "成功"
+        },
+        {
+          "node": "结算账本、物品、怀表与房间规则",
+          "status": "成功"
+        },
+        {
+          "node": "引导分支或继续剧情",
+          "status": "成功"
+        },
+        {
+          "node": "掌柜选择场景与前情",
+          "status": "成功"
+        },
+        {
+          "node": "校验模型计划并渲染已结算剧情",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 提交本轮账本",
+          "status": "成功"
+        },
+        {
+          "node": "确认写入与引用",
+          "status": "成功"
+        },
+        {
+          "node": "展示剧情、账本和存档码",
+          "status": "成功"
+        }
+      ],
+      "recorded_nodes_all_success": true,
+      "recorded_native_llm_success": true,
+      "storage_exact_checks": {
+        "citation_exact": true,
+        "entry_active": true,
+        "structured_game_envelope": true,
+        "action_utf8_exact": true,
+        "story_utf8_exact": true
+      },
+      "storage_exact_pass": true,
+      "deterministic_state_checks": {
+        "public_turn_order": true,
+        "state_turn": true,
+        "balance_expected": true,
+        "resource_conservation": true,
+        "full_state_matches_rule_replay": true,
+        "location_expected": true,
+        "closed_only_after_turn_seven": true,
+        "one_memory_with_expected_ownership": true,
+        "cost_expected": true,
+        "last_event_matches_current_outcome": true,
+        "public_ledger_exact": true
+      },
+      "deterministic_state_pass": true,
+      "bounded_template_checks": {
+        "contains_current_outcome": true,
+        "contains_current_location_balance_clock": true,
+        "no_spurious_current_owned_claim": true,
+        "pledged_memory_has_current_claim": true,
+        "full_story_matches_bounded_renderer_utf8": true
+      },
+      "bounded_template_pass": true,
+      "inferred_plan": {
+        "scene": "ink",
+        "motif": "hands",
+        "callback_turn": 3,
+        "next_choice": 0
+      },
+      "locally_recomputed_renderer_audit": {
+        "balance": 43,
+        "memory_statuses": {
+          "f0b99fdee6934c28": "pledged"
+        },
+        "model_prose_used": false,
+        "plan": {
+          "callback_turn": 3,
+          "motif": "hands",
+          "next_choice": 0,
+          "scene": "ink"
+        },
+        "renderer": "bounded-plan-v1",
+        "state_turn": 4,
+        "story_sha256": "20c9f4e2ebf4aa7ba612e281bde8c93d09e619e54c62e5474a722cd13ad54d0a",
+        "validated": true
+      }
+    },
+    {
+      "turn": 5,
+      "observed_at": "2026-11-06T02:40:59.328Z",
+      "checked_at_utc": "2026-11-06T02:43:25.339239+00:00",
+      "http_status": 200,
+      "powercontext_request_id": "60ab8734d68f56d9",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 5
+        },
+        "entry_id": "mem_ent_52bb42a8aa654fe8bc41df8002f7a43c",
+        "entry_version_id": "mem_ver_854f8a09044b4dbd9c960e9a870d647b"
+      },
+      "entry_version": 1,
+      "action_sha256_utf8": "88fd4daad585601ab03c314c9ad0b65e95c8c313d6ebdca42a0bd6d1a9d797b1",
+      "story_sha256_utf8": "5da77c533513a209a0257d0abf170b10fc424c8bf839251e010af78c8c5ad06d",
+      "public_story_sha256_utf8": "5da77c533513a209a0257d0abf170b10fc424c8bf839251e010af78c8c5ad06d",
+      "state_sha256": "cf1eea1bbbcf519d325061a83df88c225a830eabe3d8b728fa0b2a583bc75f41",
+      "expected_state_sha256": "cf1eea1bbbcf519d325061a83df88c225a830eabe3d8b728fa0b2a583bc75f41",
+      "public_state": {
+        "schema": 2,
+        "player": "ledger-guard-20261106",
+        "chapter": "station-whistle-v3",
+        "turn": 5,
+        "minutes": 18,
+        "earned": 20,
+        "spent": 47,
+        "clock": 673,
+        "location": "旧信室",
+        "inventory": [
+          "黄铜怀表",
+          "倒走钥匙",
+          "未寄出的信"
+        ],
+        "watch_name": "",
+        "memories": [
+          {
+            "created_turn": 1,
+            "id": "f0b99fdee6934c28",
+            "label": "蓝色车站汽笛",
+            "status": "redeemed",
+            "trades": 1
+          }
+        ],
+        "visited": [
+          "旧信室"
+        ],
+        "events": [
+          {
+            "action": "典当蓝色车站汽笛的记忆",
+            "branch": "trade",
+            "outcome": "典当“蓝色车站汽笛”，获得 20 分钟；这段记忆在赎回前无法回忆。",
+            "turn": 1
+          },
+          {
+            "action": "回忆蓝色车站汽笛",
+            "branch": "recall",
+            "outcome": "“蓝色车站汽笛”仍在抵押柜。你能认出标签，但无法重现内容；赎回需 25 分钟。这次尝试免费。",
+            "turn": 2
+          },
+          {
+            "action": "买倒走钥匙",
+            "branch": "trade",
+            "outcome": "支付 10 分钟获得倒走钥匙，旧信室和回声室已可进入。",
+            "turn": 3
+          },
+          {
+            "action": "进入旧信室",
+            "branch": "room",
+            "outcome": "支付 12 分钟进入旧信室。信中没有替你决定收件人，信封上的邮戳正在向昨天倒退。首次来访，取得“未寄出的信”；再次进入不会重复获得。",
+            "turn": 4
+          },
+          {
+            "action": "赎回蓝色车站汽笛",
+            "branch": "trade",
+            "outcome": "支付 25 分钟，赎回“蓝色车站汽笛”。这段记忆可以再次回忆。",
+            "turn": 5
+          }
+        ],
+        "closed": false,
+        "last_action_id": "46af3ed294b34f9befbd7834fe34bdcba6c240d9d83c524d5f85e4376a2642a8"
+      },
+      "current_outcome": "支付 25 分钟，赎回“蓝色车站汽笛”。这段记忆可以再次回忆。",
+      "recorded_node_statuses": [
+        {
+          "node": "进入倒走钟表旅店",
+          "status": "成功"
+        },
+        {
+          "node": "派发存档码并按行动检索",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 读取当前状态与相关记忆",
+          "status": "成功"
+        },
+        {
+          "node": "结算账本、物品、怀表与房间规则",
+          "status": "成功"
+        },
+        {
+          "node": "引导分支或继续剧情",
+          "status": "成功"
+        },
+        {
+          "node": "掌柜选择场景与前情",
+          "status": "成功"
+        },
+        {
+          "node": "校验模型计划并渲染已结算剧情",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 提交本轮账本",
+          "status": "成功"
+        },
+        {
+          "node": "确认写入与引用",
+          "status": "成功"
+        },
+        {
+          "node": "展示剧情、账本和存档码",
+          "status": "成功"
+        }
+      ],
+      "recorded_nodes_all_success": true,
+      "recorded_native_llm_success": true,
+      "storage_exact_checks": {
+        "citation_exact": true,
+        "entry_active": true,
+        "structured_game_envelope": true,
+        "action_utf8_exact": true,
+        "story_utf8_exact": true
+      },
+      "storage_exact_pass": true,
+      "deterministic_state_checks": {
+        "public_turn_order": true,
+        "state_turn": true,
+        "balance_expected": true,
+        "resource_conservation": true,
+        "full_state_matches_rule_replay": true,
+        "location_expected": true,
+        "closed_only_after_turn_seven": true,
+        "one_memory_with_expected_ownership": true,
+        "cost_expected": true,
+        "last_event_matches_current_outcome": true,
+        "public_ledger_exact": true
+      },
+      "deterministic_state_pass": true,
+      "bounded_template_checks": {
+        "contains_current_outcome": true,
+        "contains_current_location_balance_clock": true,
+        "owned_memory_has_current_no_redemption_claim": true,
+        "no_current_pledge_claim_for_returned_memory": true,
+        "full_story_matches_bounded_renderer_utf8": true
+      },
+      "bounded_template_pass": true,
+      "inferred_plan": {
+        "scene": "ink",
+        "motif": "hands",
+        "callback_turn": 4,
+        "next_choice": 0
+      },
+      "locally_recomputed_renderer_audit": {
+        "balance": 18,
+        "memory_statuses": {
+          "f0b99fdee6934c28": "redeemed"
+        },
+        "model_prose_used": false,
+        "plan": {
+          "callback_turn": 4,
+          "motif": "hands",
+          "next_choice": 0,
+          "scene": "ink"
+        },
+        "renderer": "bounded-plan-v1",
+        "state_turn": 5,
+        "story_sha256": "5da77c533513a209a0257d0abf170b10fc424c8bf839251e010af78c8c5ad06d",
+        "validated": true
+      }
+    },
+    {
+      "turn": 6,
+      "observed_at": "2026-11-06T02:41:16.469Z",
+      "checked_at_utc": "2026-11-06T02:43:25.357637+00:00",
+      "http_status": 200,
+      "powercontext_request_id": "a09d177f8809baeb",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 6
+        },
+        "entry_id": "mem_ent_5a1fc6fb3f884ad1a9047603a02993bf",
+        "entry_version_id": "mem_ver_4aa7d7fcb8bd48489d3a4a2f22a97000"
+      },
+      "entry_version": 1,
+      "action_sha256_utf8": "ac34fabcd1459e056719f325fa7cde39219f98605db237510f0847b69cb2c8b8",
+      "story_sha256_utf8": "29fb250c8f76b6d7254d3301665fe745d7598ac29073113ea173b71c574fa50b",
+      "public_story_sha256_utf8": "29fb250c8f76b6d7254d3301665fe745d7598ac29073113ea173b71c574fa50b",
+      "state_sha256": "d64630202f01165de0c21e5304da9ec104f30d9808e41fd1ae86aaf3faf507be",
+      "expected_state_sha256": "d64630202f01165de0c21e5304da9ec104f30d9808e41fd1ae86aaf3faf507be",
+      "public_state": {
+        "schema": 2,
+        "player": "ledger-guard-20261106",
+        "chapter": "station-whistle-v3",
+        "turn": 6,
+        "minutes": 16,
+        "earned": 20,
+        "spent": 49,
+        "clock": 671,
+        "location": "旧信室",
+        "inventory": [
+          "黄铜怀表",
+          "倒走钥匙",
+          "未寄出的信"
+        ],
+        "watch_name": "",
+        "memories": [
+          {
+            "created_turn": 1,
+            "id": "f0b99fdee6934c28",
+            "label": "蓝色车站汽笛",
+            "status": "redeemed",
+            "trades": 1
+          }
+        ],
+        "visited": [
+          "旧信室"
+        ],
+        "events": [
+          {
+            "action": "典当蓝色车站汽笛的记忆",
+            "branch": "trade",
+            "outcome": "典当“蓝色车站汽笛”，获得 20 分钟；这段记忆在赎回前无法回忆。",
+            "turn": 1
+          },
+          {
+            "action": "回忆蓝色车站汽笛",
+            "branch": "recall",
+            "outcome": "“蓝色车站汽笛”仍在抵押柜。你能认出标签，但无法重现内容；赎回需 25 分钟。这次尝试免费。",
+            "turn": 2
+          },
+          {
+            "action": "买倒走钥匙",
+            "branch": "trade",
+            "outcome": "支付 10 分钟获得倒走钥匙，旧信室和回声室已可进入。",
+            "turn": 3
+          },
+          {
+            "action": "进入旧信室",
+            "branch": "room",
+            "outcome": "支付 12 分钟进入旧信室。信中没有替你决定收件人，信封上的邮戳正在向昨天倒退。首次来访，取得“未寄出的信”；再次进入不会重复获得。",
+            "turn": 4
+          },
+          {
+            "action": "赎回蓝色车站汽笛",
+            "branch": "trade",
+            "outcome": "支付 25 分钟，赎回“蓝色车站汽笛”。这段记忆可以再次回忆。",
+            "turn": 5
+          },
+          {
+            "action": "回忆蓝色车站汽笛",
+            "branch": "recall",
+            "outcome": "花 2 分钟回忆“蓝色车站汽笛”。这段记忆仍归你所有。",
+            "turn": 6
+          }
+        ],
+        "closed": false,
+        "last_action_id": "6594512ac09be9a33d5c7bdd24d61d0fab5840f5346b7e9c20e54d4ac9c2e804"
+      },
+      "current_outcome": "花 2 分钟回忆“蓝色车站汽笛”。这段记忆仍归你所有。",
+      "recorded_node_statuses": [
+        {
+          "node": "进入倒走钟表旅店",
+          "status": "成功"
+        },
+        {
+          "node": "派发存档码并按行动检索",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 读取当前状态与相关记忆",
+          "status": "成功"
+        },
+        {
+          "node": "结算账本、物品、怀表与房间规则",
+          "status": "成功"
+        },
+        {
+          "node": "引导分支或继续剧情",
+          "status": "成功"
+        },
+        {
+          "node": "掌柜选择场景与前情",
+          "status": "成功"
+        },
+        {
+          "node": "校验模型计划并渲染已结算剧情",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 提交本轮账本",
+          "status": "成功"
+        },
+        {
+          "node": "确认写入与引用",
+          "status": "成功"
+        },
+        {
+          "node": "展示剧情、账本和存档码",
+          "status": "成功"
+        }
+      ],
+      "recorded_nodes_all_success": true,
+      "recorded_native_llm_success": true,
+      "storage_exact_checks": {
+        "citation_exact": true,
+        "entry_active": true,
+        "structured_game_envelope": true,
+        "action_utf8_exact": true,
+        "story_utf8_exact": true
+      },
+      "storage_exact_pass": true,
+      "deterministic_state_checks": {
+        "public_turn_order": true,
+        "state_turn": true,
+        "balance_expected": true,
+        "resource_conservation": true,
+        "full_state_matches_rule_replay": true,
+        "location_expected": true,
+        "closed_only_after_turn_seven": true,
+        "one_memory_with_expected_ownership": true,
+        "cost_expected": true,
+        "last_event_matches_current_outcome": true,
+        "public_ledger_exact": true
+      },
+      "deterministic_state_pass": true,
+      "bounded_template_checks": {
+        "contains_current_outcome": true,
+        "contains_current_location_balance_clock": true,
+        "owned_memory_has_current_no_redemption_claim": true,
+        "no_current_pledge_claim_for_returned_memory": true,
+        "turn_six_recalls_returned_memory_for_two_minutes": true,
+        "full_story_matches_bounded_renderer_utf8": true
+      },
+      "bounded_template_pass": true,
+      "inferred_plan": {
+        "scene": "ink",
+        "motif": "hands",
+        "callback_turn": 5,
+        "next_choice": 1
+      },
+      "locally_recomputed_renderer_audit": {
+        "balance": 16,
+        "memory_statuses": {
+          "f0b99fdee6934c28": "redeemed"
+        },
+        "model_prose_used": false,
+        "plan": {
+          "callback_turn": 5,
+          "motif": "hands",
+          "next_choice": 1,
+          "scene": "ink"
+        },
+        "renderer": "bounded-plan-v1",
+        "state_turn": 6,
+        "story_sha256": "29fb250c8f76b6d7254d3301665fe745d7598ac29073113ea173b71c574fa50b",
+        "validated": true
+      }
+    },
+    {
+      "turn": 7,
+      "observed_at": "2026-11-06T02:42:57.831Z",
+      "checked_at_utc": "2026-11-06T02:43:25.379367+00:00",
+      "http_status": 200,
+      "powercontext_request_id": "513b0d5e1a5803df",
+      "citation": {
+        "memory_ref": {
+          "family": "memory",
+          "artifact_id": "memory",
+          "revision": 7
+        },
+        "entry_id": "mem_ent_61c89a8336b242118bd53235a10fbc9d",
+        "entry_version_id": "mem_ver_c6e757133de64629947dc5717a7a7293"
+      },
+      "entry_version": 1,
+      "action_sha256_utf8": "ee4dcbbceab48bd106fe2784aa35520ec7a14174edeb957a357d9596198e9ded",
+      "story_sha256_utf8": "4ce4ab16c189c9ffe80a819f7fc4ae043dd6ca6f85ff681085f7358dc9d0924d",
+      "public_story_sha256_utf8": "4ce4ab16c189c9ffe80a819f7fc4ae043dd6ca6f85ff681085f7358dc9d0924d",
+      "state_sha256": "716799938ff852652b713b773ab2c65b0bf88905be35718caa1b9469b2c24850",
+      "expected_state_sha256": "716799938ff852652b713b773ab2c65b0bf88905be35718caa1b9469b2c24850",
+      "public_state": {
+        "schema": 2,
+        "player": "ledger-guard-20261106",
+        "chapter": "station-whistle-v3",
+        "turn": 7,
+        "minutes": 16,
+        "earned": 20,
+        "spent": 49,
+        "clock": 671,
+        "location": "旅店外",
+        "inventory": [
+          "黄铜怀表",
+          "倒走钥匙",
+          "未寄出的信"
+        ],
+        "watch_name": "",
+        "memories": [
+          {
+            "created_turn": 1,
+            "id": "f0b99fdee6934c28",
+            "label": "蓝色车站汽笛",
+            "status": "redeemed",
+            "trades": 1
+          }
+        ],
+        "visited": [
+          "旧信室"
+        ],
+        "events": [
+          {
+            "action": "典当蓝色车站汽笛的记忆",
+            "branch": "trade",
+            "outcome": "典当“蓝色车站汽笛”，获得 20 分钟；这段记忆在赎回前无法回忆。",
+            "turn": 1
+          },
+          {
+            "action": "回忆蓝色车站汽笛",
+            "branch": "recall",
+            "outcome": "“蓝色车站汽笛”仍在抵押柜。你能认出标签，但无法重现内容；赎回需 25 分钟。这次尝试免费。",
+            "turn": 2
+          },
+          {
+            "action": "买倒走钥匙",
+            "branch": "trade",
+            "outcome": "支付 10 分钟获得倒走钥匙，旧信室和回声室已可进入。",
+            "turn": 3
+          },
+          {
+            "action": "进入旧信室",
+            "branch": "room",
+            "outcome": "支付 12 分钟进入旧信室。信中没有替你决定收件人，信封上的邮戳正在向昨天倒退。首次来访，取得“未寄出的信”；再次进入不会重复获得。",
+            "turn": 4
+          },
+          {
+            "action": "赎回蓝色车站汽笛",
+            "branch": "trade",
+            "outcome": "支付 25 分钟，赎回“蓝色车站汽笛”。这段记忆可以再次回忆。",
+            "turn": 5
+          },
+          {
+            "action": "回忆蓝色车站汽笛",
+            "branch": "recall",
+            "outcome": "花 2 分钟回忆“蓝色车站汽笛”。这段记忆仍归你所有。",
+            "turn": 6
+          },
+          {
+            "action": "结账离店",
+            "branch": "checkout",
+            "outcome": "已结账离店，带走所持道具和剩余 16 分钟。没有记忆留在抵押柜中。",
+            "turn": 7
+          }
+        ],
+        "closed": true,
+        "last_action_id": "edf4f06162eb002abe09ca3c58422da7c675cea6a28c93dfb68eae91a2c091a6"
+      },
+      "current_outcome": "已结账离店，带走所持道具和剩余 16 分钟。没有记忆留在抵押柜中。",
+      "recorded_node_statuses": [
+        {
+          "node": "进入倒走钟表旅店",
+          "status": "成功"
+        },
+        {
+          "node": "派发存档码并按行动检索",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 读取当前状态与相关记忆",
+          "status": "成功"
+        },
+        {
+          "node": "结算账本、物品、怀表与房间规则",
+          "status": "成功"
+        },
+        {
+          "node": "引导分支或继续剧情",
+          "status": "成功"
+        },
+        {
+          "node": "掌柜选择场景与前情",
+          "status": "成功"
+        },
+        {
+          "node": "校验模型计划并渲染已结算剧情",
+          "status": "成功"
+        },
+        {
+          "node": "POWERCONTEXT 提交本轮账本",
+          "status": "成功"
+        },
+        {
+          "node": "确认写入与引用",
+          "status": "成功"
+        },
+        {
+          "node": "展示剧情、账本和存档码",
+          "status": "成功"
+        }
+      ],
+      "recorded_nodes_all_success": true,
+      "recorded_native_llm_success": true,
+      "storage_exact_checks": {
+        "citation_exact": true,
+        "entry_active": true,
+        "structured_game_envelope": true,
+        "action_utf8_exact": true,
+        "story_utf8_exact": true
+      },
+      "storage_exact_pass": true,
+      "deterministic_state_checks": {
+        "public_turn_order": true,
+        "state_turn": true,
+        "balance_expected": true,
+        "resource_conservation": true,
+        "full_state_matches_rule_replay": true,
+        "location_expected": true,
+        "closed_only_after_turn_seven": true,
+        "one_memory_with_expected_ownership": true,
+        "cost_expected": true,
+        "last_event_matches_current_outcome": true,
+        "public_ledger_exact": true
+      },
+      "deterministic_state_pass": true,
+      "bounded_template_checks": {
+        "contains_current_outcome": true,
+        "contains_current_location_balance_clock": true,
+        "owned_memory_has_current_no_redemption_claim": true,
+        "no_current_pledge_claim_for_returned_memory": true,
+        "full_story_matches_bounded_renderer_utf8": true
+      },
+      "bounded_template_pass": true,
+      "inferred_plan": {
+        "scene": "brass",
+        "motif": "hands",
+        "callback_turn": 6,
+        "next_choice": 0
+      },
+      "locally_recomputed_renderer_audit": {
+        "balance": 16,
+        "memory_statuses": {
+          "f0b99fdee6934c28": "redeemed"
+        },
+        "model_prose_used": false,
+        "plan": {
+          "callback_turn": 6,
+          "motif": "hands",
+          "next_choice": 0,
+          "scene": "brass"
+        },
+        "renderer": "bounded-plan-v1",
+        "state_turn": 7,
+        "story_sha256": "4ce4ab16c189c9ffe80a819f7fc4ae043dd6ca6f85ff681085f7358dc9d0924d",
+        "validated": true
+      }
+    }
+  ]
+}

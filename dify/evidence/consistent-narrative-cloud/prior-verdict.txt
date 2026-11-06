@@ -1,0 +1,2 @@
+Just for Fun ，用 Dify 做一个好玩的智能应用	20	0	
+不通过：编排与证据本身达标（workflow 11 节点 10 边、规则在 Code 节点结算、IF/ELSE 分流、HTTP 仅 /recall 与 /remember；PowerContext 真实读写且 README 明确后端为 SQLite；有 Dify Cloud 的 workflow_run_id 与 10/10 节点成功截图）。但提交方自己的第 6 轮证据自相矛盾：面板记录“花 2 分钟回忆、记忆已回归”，同轮叙事却称“记忆依旧在抵押柜中、须付出更多时间”，说明叙事未遵循已结算状态，违反其“LLM 只依据结算结果描写”的承诺，按标准第 4 条判不通过。风险：player 未认证、save_code 为持有人凭据、HTTP 原文插值、叙事与账本可能不一致。未独立复跑。
